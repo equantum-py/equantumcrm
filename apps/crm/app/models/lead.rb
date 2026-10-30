@@ -27,6 +27,11 @@ class Lead < ApplicationRecord
   validates :created_via, inclusion: { in: CREATED_VIA }
   validates :fingerprint, presence: true, uniqueness: { message: "coincide con un prospecto ya registrado" }
   validates :discard_reason, presence: true, if: -> { status == "discarded" }
+  validates :budget_currency, inclusion: { in: CommercialThreshold::CURRENCIES }, allow_blank: true
+  validates :competition_count, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :estimated_hours, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+  validates :commercial_priority, inclusion: { in: CommercialPriority::CLASSES }, allow_nil: true
+  validate :budget_is_complete
   validate :original_url_is_http
   validate :published_at_not_in_future
   validate :qualification_requirements, if: -> { status == "qualified" && status_changed? }
@@ -68,6 +73,27 @@ class Lead < ApplicationRecord
     else
       update!(score: nil, score_band: nil, scoring_version: nil)
     end
+    refresh_priority!
+  end
+
+  # Stores the commercial priority. Off until rubric v2 is active.
+  def refresh_priority!
+    return unless RubricVersion.priority_enabled?
+
+    result = CommercialPriority.new(self).call
+    update!(commercial_priority: result.priority, priority_score: result.score, priority_confidence: result.confidence,
+            priority_breakdown: result.breakdown, priority_calculated_at: Time.current)
+  end
+
+  def budget_min_amount = budget_min_cents && Money.from_cents(budget_min_cents, budget_currency)
+  def budget_max_amount = budget_max_cents && Money.from_cents(budget_max_cents, budget_currency)
+
+  def budget_min_amount=(value)
+    self.budget_min_cents = value.blank? || budget_currency.blank? ? nil : Money.to_cents(value, budget_currency)
+  end
+
+  def budget_max_amount=(value)
+    self.budget_max_cents = value.blank? || budget_currency.blank? ? nil : Money.to_cents(value, budget_currency)
   end
 
   def score_complete? = score.present?
@@ -80,6 +106,14 @@ class Lead < ApplicationRecord
       if fingerprint.blank? && source
         self.fingerprint = self.class.fingerprint_for(source_key: source.key, url: original_url, text: need_summary.presence || title)
       end
+    end
+
+    def budget_is_complete
+      values = [ budget_currency.presence, budget_min_cents, budget_max_cents ]
+      return if values.all?(&:nil?)
+
+      errors.add(:budget_currency, "y ambos montos son obligatorios para registrar el presupuesto") if values.any?(&:nil?)
+      errors.add(:budget_max_cents, "debe ser mayor o igual al mínimo") if budget_min_cents && budget_max_cents && budget_max_cents < budget_min_cents
     end
 
     def original_url_is_http

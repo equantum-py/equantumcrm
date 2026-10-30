@@ -43,6 +43,39 @@
       <%= f.label :published_budget_text, "Presupuesto publicado (literal)", class: ApplicationHelper::LABEL_CLASS %>
       <%= f.text_field :published_budget_text, maxlength: 120, placeholder: "Vacío si no lo publica", class: ApplicationHelper::INPUT_CLASS %>
     </div>
+    <fieldset class="sm:col-span-2 rounded-lg p-4 ring-1 ring-slate-200">
+      <legend class="px-1 text-sm font-semibold">Datos comerciales (para la prioridad comercial)</legend>
+      <p class="mb-3 text-xs text-slate-500">Completá solo lo que se ve en la fuente. Lo que falte no se supone: queda fuera del cálculo.</p>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <%= f.label :budget_currency, "Moneda del presupuesto", class: ApplicationHelper::LABEL_CLASS %>
+          <%= f.select :budget_currency, CommercialThreshold::CURRENCIES, { include_blank: "Sin presupuesto" }, class: ApplicationHelper::INPUT_CLASS %>
+          <%= field_error(lead, :budget_currency) %>
+        </div>
+        <div>
+          <%= f.label :budget_min_amount, "Mínimo publicado", class: ApplicationHelper::LABEL_CLASS %>
+          <%= f.text_field :budget_min_amount, value: lead.budget_min_amount&.to_d&.to_s("F")&.sub(/\.0\z/, ""), inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %>
+        </div>
+        <div>
+          <%= f.label :budget_max_amount, "Máximo publicado", class: ApplicationHelper::LABEL_CLASS %>
+          <%= f.text_field :budget_max_amount, value: lead.budget_max_amount&.to_d&.to_s("F")&.sub(/\.0\z/, ""), inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %>
+          <%= field_error(lead, :budget_max_cents) %>
+        </div>
+        <div>
+          <%= f.label :competition_count, "Propuestas visibles", class: ApplicationHelper::LABEL_CLASS %>
+          <%= f.number_field :competition_count, min: 0, class: ApplicationHelper::INPUT_CLASS %>
+        </div>
+        <div>
+          <%= f.label :deadline_at, "Cierre para ofertar", class: ApplicationHelper::LABEL_CLASS %>
+          <%= f.date_field :deadline_at, value: lead.deadline_at&.to_date, class: ApplicationHelper::INPUT_CLASS %>
+        </div>
+        <div>
+          <%= f.label :estimated_hours, "Horas estimadas (interno)", class: ApplicationHelper::LABEL_CLASS %>
+          <%= f.number_field :estimated_hours, min: 1, class: ApplicationHelper::INPUT_CLASS %>
+        </div>
+        <label class="flex items-center gap-2 text-sm sm:col-span-3"><%= f.check_box :listing_closed, class: "rounded border-slate-300 text-indigo-600" %> La publicación ya está cerrada</label>
+      </div>
+    </fieldset>
     <fieldset class="sm:col-span-2">
       <legend class="<%= ApplicationHelper::LABEL_CLASS %>">Servicios solicitados</legend>
       <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">

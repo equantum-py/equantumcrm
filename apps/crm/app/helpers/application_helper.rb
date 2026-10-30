@@ -75,8 +75,15 @@ module ApplicationHelper
     list: "M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z",
     plus: "M12 4.5v15m7.5-7.5h-15",
     search: "M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z",
-    menu: "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+    menu: "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5",
+    chart: "M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
   }.freeze
+
+  PRIORITY_STYLES = { "high" => "bg-emerald-50 text-emerald-800 ring-emerald-200", "medium" => "bg-sky-50 text-sky-800 ring-sky-200",
+                      "low" => "bg-slate-50 text-slate-700 ring-slate-200", "not_recommended" => "bg-rose-50 text-rose-800 ring-rose-200" }.freeze
+  PRIORITY_FACTORS = { "budget_vs_rate" => "Presupuesto vs. tarifa aprobada", "economic_value" => "Valor económico",
+                       "service_value" => "Valor del servicio", "profitability" => "Rentabilidad estimada",
+                       "competition" => "Competencia", "urgency" => "Urgencia", "recency" => "Antigüedad" }.freeze
 
   def icon_svg(name, classes = "size-5")
     tag.svg(xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", "stroke-width": "1.5", stroke: "currentColor", class: classes, aria: { hidden: true }) do

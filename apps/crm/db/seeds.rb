@@ -93,6 +93,41 @@ end
   ScoringCriterion.find_or_initialize_by(version: 1, key: key).update!(name: name, max_points: max, position: position)
 end
 
+# Rubric v2 measures intent only; urgency and budget move to the commercial
+# priority (CommercialPriority). It is seeded as a draft and never activated here.
+[
+  [ "explicit_intent", "Intención explícita de contratación", 30 ],
+  [ "service_fit", "Compatibilidad con servicios eQuantum", 25 ],
+  [ "clarity", "Claridad del alcance", 15 ],
+  [ "recency", "Antigüedad de la publicación", 15 ],
+  [ "target_market", "Mercado objetivo", 10 ],
+  [ "contact_possible", "Posibilidad legítima de contacto", 5 ]
+].each.with_index(1) do |(key, name, max), position|
+  ScoringCriterion.find_or_initialize_by(version: 2, key: key).update!(name: name, max_points: max, position: position)
+end
+
+RubricVersion.find_or_create_by!(version: 1) do |rubric|
+  rubric.name = "Rúbrica v1"
+  rubric.status = RubricVersion.exists?(status: "active") ? "draft" : "active"
+  rubric.activated_at = Time.current if rubric.status == "active"
+end
+RubricVersion.find_or_create_by!(version: 2) do |rubric|
+  rubric.name = "Rúbrica v2: intención + prioridad comercial"
+  rubric.status = "draft"
+end
+
+# Service value as prioritized by Dirección (30/10/2026): ecommerce/Shopify,
+# apps and custom systems and commercial consulting are high value; SEO and
+# ads matter for their recurring potential.
+service_value = {
+  "high" => %w[shopify ecommerce migracion_ecommerce app_web sistema_empresarial consultoria_comercial consultoria_ecommerce]
+}
+recurring = %w[seo google_ads meta_ads soporte]
+Service.find_each do |service|
+  tier = service_value.find { |_tier, keys| keys.include?(service.key) }&.first || "medium"
+  service.update!(value_tier: tier, recurring: recurring.include?(service.key))
+end
+
 # The first administrator comes from the environment; no default password exists.
 if ENV["ADMIN_EMAIL"].present? && ENV["ADMIN_PASSWORD"].present?
   User.find_or_create_by!(email_address: ENV["ADMIN_EMAIL"]) do |user|

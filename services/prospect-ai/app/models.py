@@ -110,6 +110,9 @@ class IngestRequest(Strict):
     author_display_name: str | None = Field(default=None, max_length=120)
     contact_channel: ContactChannel | None = None
     published_budget_text: str | None = Field(default=None, max_length=200)
+    competition_count: int | None = Field(default=None, ge=0)
+    deadline_at: datetime | None = None
+    listing_closed: bool = False
     captured_by: str = Field(default="prospect-ai", max_length=80)
     evidence: list[Evidence] = Field(default_factory=list, max_length=5)
     rubric: list[RubricCriterion] | None = Field(default=None, max_length=30)

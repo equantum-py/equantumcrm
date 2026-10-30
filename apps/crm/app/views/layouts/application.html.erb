@@ -40,6 +40,7 @@
         <% if policy(ServiceRate).index? || policy(User).index? || policy(AuditLog).index? %>
           <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Administración</p>
           <% if policy(ServiceRate).index? %><%= nav_link "Tarifas", admin_service_rates_path, icon: :tag %><% end %>
+          <% if policy(CommercialThreshold).index? %><%= nav_link "Umbrales", admin_commercial_thresholds_path, icon: :chart %><% end %>
           <% if policy(User).index? %><%= nav_link "Usuarios", admin_users_path, icon: :users %><% end %>
           <% if policy(AuditLog).index? %><%= nav_link "Auditoría", admin_audit_logs_path, icon: :shield %><% end %>
         <% end %>

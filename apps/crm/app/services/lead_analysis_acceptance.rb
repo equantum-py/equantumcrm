@@ -23,6 +23,9 @@ class LeadAnalysisAcceptance
       if (country = Country.find_by(iso2: @analysis.output["country"].to_s.upcase)) && @lead.country.nil?
         @lead.country = country
       end
+      if (budget = @analysis.output["budget"]).is_a?(Hash) && @lead.budget_currency.blank?
+        @lead.assign_attributes(budget_currency: budget["currency"], budget_min_cents: budget["min_cents"], budget_max_cents: budget["max_cents"])
+      end
       @lead.recommended_action = @analysis.output["recommended_action"] if @lead.recommended_action.blank?
       @lead.suggested_message = @analysis.output["draft_message"] if @lead.suggested_message.blank?
       @lead.save!

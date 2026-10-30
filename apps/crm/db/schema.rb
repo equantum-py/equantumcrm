@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -77,6 +77,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
     t.index ["api_client_id"], name: "index_audit_logs_on_api_client_id"
     t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
+  end
+
+  create_table "commercial_thresholds", force: :cascade do |t|
+    t.string "currency", limit: 3, null: false
+    t.bigint "min_viable_cents", null: false
+    t.bigint "high_value_cents", null: false
+    t.bigint "approved_by_id", null: false
+    t.datetime "approved_at", null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["approved_by_id"], name: "index_commercial_thresholds_on_approved_by_id"
+    t.index ["currency"], name: "index_commercial_thresholds_on_currency", unique: true
+    t.check_constraint "min_viable_cents >= 0 AND high_value_cents >= min_viable_cents", name: "commercial_thresholds_range"
   end
 
   create_table "companies", force: :cascade do |t|
@@ -202,6 +216,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
     t.string "external_id"
     t.boolean "published_at_verified", default: false, null: false
     t.string "contact_channel_kind"
+    t.string "budget_currency", limit: 3
+    t.bigint "budget_min_cents"
+    t.bigint "budget_max_cents"
+    t.integer "competition_count"
+    t.datetime "deadline_at"
+    t.boolean "listing_closed", default: false, null: false
+    t.integer "estimated_hours"
+    t.string "commercial_priority"
+    t.integer "priority_score"
+    t.decimal "priority_confidence", precision: 3, scale: 2
+    t.jsonb "priority_breakdown", default: {}, null: false
+    t.datetime "priority_calculated_at"
+    t.index ["commercial_priority"], name: "index_leads_on_commercial_priority"
     t.index ["company_id"], name: "index_leads_on_company_id"
     t.index ["country_id", "detected_at"], name: "index_leads_on_country_id_and_detected_at"
     t.index ["country_id"], name: "index_leads_on_country_id"
@@ -210,7 +237,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
     t.index ["source_id", "detected_at"], name: "index_leads_on_source_id_and_detected_at"
     t.index ["source_id"], name: "index_leads_on_source_id"
     t.index ["status", "score"], name: "index_leads_on_status_and_score"
+    t.check_constraint "budget_min_cents IS NULL OR budget_max_cents IS NULL OR budget_max_cents >= budget_min_cents", name: "leads_budget_range"
+    t.check_constraint "commercial_priority::text = ANY (ARRAY['high'::character varying, 'medium'::character varying, 'low'::character varying, 'not_recommended'::character varying]::text[])", name: "leads_commercial_priority"
+    t.check_constraint "competition_count IS NULL OR competition_count >= 0", name: "leads_competition_count"
     t.check_constraint "created_via::text = ANY (ARRAY['manual'::character varying, 'api'::character varying, 'skill'::character varying]::text[])", name: "leads_created_via"
+    t.check_constraint "estimated_hours IS NULL OR estimated_hours > 0", name: "leads_estimated_hours"
     t.check_constraint "score IS NULL OR score >= 0 AND score <= 100", name: "leads_score"
     t.check_constraint "status::text = ANY (ARRAY['new'::character varying, 'researching'::character varying, 'qualified'::character varying, 'discarded'::character varying, 'converted'::character varying]::text[])", name: "leads_status"
     t.check_constraint "urgency::text = ANY (ARRAY['unknown'::character varying, 'low'::character varying, 'medium'::character varying, 'high'::character varying]::text[])", name: "leads_urgency"
@@ -290,6 +321,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
     t.index ["key"], name: "index_roles_on_key", unique: true
   end
 
+  create_table "rubric_versions", force: :cascade do |t|
+    t.integer "version", null: false
+    t.string "name", null: false
+    t.string "status", default: "draft", null: false
+    t.datetime "activated_at"
+    t.bigint "approved_by_id"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["approved_by_id"], name: "index_rubric_versions_on_approved_by_id"
+    t.index ["status"], name: "index_rubric_versions_single_active", unique: true, where: "((status)::text = 'active'::text)"
+    t.index ["version"], name: "index_rubric_versions_on_version", unique: true
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'active'::character varying, 'retired'::character varying]::text[])", name: "rubric_versions_status"
+  end
+
   create_table "scoring_criteria", force: :cascade do |t|
     t.string "key", null: false
     t.string "name", null: false
@@ -332,7 +378,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "value_tier", default: "medium", null: false
+    t.boolean "recurring", default: false, null: false
     t.index ["key"], name: "index_services_on_key", unique: true
+    t.check_constraint "value_tier::text = ANY (ARRAY['high'::character varying, 'medium'::character varying, 'low'::character varying]::text[])", name: "services_value_tier"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -370,6 +419,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
   add_foreign_key "ai_analyses", "users", column: "reviewed_by_id"
   add_foreign_key "audit_logs", "api_clients"
   add_foreign_key "audit_logs", "users", column: "actor_id"
+  add_foreign_key "commercial_thresholds", "users", column: "approved_by_id"
   add_foreign_key "companies", "countries"
   add_foreign_key "companies", "users", column: "owner_id"
   add_foreign_key "company_services", "companies", on_delete: :cascade
@@ -395,6 +445,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
   add_foreign_key "opportunity_services", "services"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
+  add_foreign_key "rubric_versions", "users", column: "approved_by_id"
   add_foreign_key "service_rates", "countries"
   add_foreign_key "service_rates", "services"
   add_foreign_key "service_rates", "users", column: "approved_by_id"

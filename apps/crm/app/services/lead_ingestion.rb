@@ -29,6 +29,7 @@ class LeadIngestion
       lead.save!
       add_evidence(lead)
       analysis = add_analysis(lead)
+      lead.refresh_priority!
     end
     Result.new(status: 201, body: body_for(lead, duplicate: false, analysis: analysis), lead: lead)
   rescue ActiveRecord::RecordInvalid => e
@@ -62,6 +63,11 @@ class LeadIngestion
       contact_kind = payload.dig("contact_channel", "kind").to_s.presence
       @errors["contact_channel.kind"] << "no es válido" if contact_kind && CONTACT_KINDS.exclude?(contact_kind)
 
+      competition = payload["competition_count"]
+      if competition && !(competition.is_a?(Integer) && competition >= 0)
+        @errors["competition_count"] << "debe ser un entero mayor o igual a 0"
+      end
+
       check_length("title", 200)
       check_length("external_id", 120)
       check_length("author_display_name", 120)
@@ -81,6 +87,9 @@ class LeadIngestion
         author_display_name: payload["author_display_name"].to_s.strip.presence,
         contact_channel_kind: contact_kind,
         published_budget_text: payload["published_budget_text"].to_s.strip.presence,
+        competition_count: competition.is_a?(Integer) ? competition : nil,
+        deadline_at: parse_time("deadline_at"),
+        listing_closed: payload["listing_closed"] == true,
         created_via: "api",
         status: "new",
         verification_status: "unverified"

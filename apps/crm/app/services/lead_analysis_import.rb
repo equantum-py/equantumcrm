@@ -25,6 +25,7 @@ class LeadAnalysisImport
       "criteria" => normalize_criteria(Array(data["criteria"]), criteria_by_key),
       "recommended_action" => (data["recommended_action"] || data["recommendation"] || data["suggested_next_action"]).to_s.strip.presence,
       "draft_message" => data["draft_message"].to_s.strip.presence,
+      "budget" => normalize_budget(data["budget"]),
       "warnings" => Array(data["warnings"]).map(&:to_s) + errors
     }
   end
@@ -38,6 +39,20 @@ class LeadAnalysisImport
       rescue Psych::Exception
         raise Invalid, "No se pudo leer el análisis: formato JSON/YAML inválido"
       end
+    end
+
+    # Budget read from the published text: {"currency", "min", "max"} as decimals.
+    def normalize_budget(raw)
+      return unless raw.is_a?(Hash)
+
+      currency = raw["currency"].to_s.upcase
+      min = Money.to_cents(raw["min"], currency) if raw["min"].present?
+      max = Money.to_cents(raw["max"], currency) if raw["max"].present?
+      unless CommercialThreshold::CURRENCIES.include?(currency) && min && max && min.positive? && max >= min
+        errors << "Presupuesto propuesto ilegible; se ignoró"
+        return
+      end
+      { "currency" => currency, "min_cents" => min, "max_cents" => max }
     end
 
     # Skills send ["seo"]; Prospect AI sends [{"key": "seo", "confidence": 0.8}].

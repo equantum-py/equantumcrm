@@ -91,6 +91,15 @@ class ApiLeadIngestionTest < ActionDispatch::IntegrationTest
     assert_equal "idempotency_conflict", response.parsed_body.dig("error", "code")
   end
 
+  test "stores platform competition and deadline" do
+    ingest(payload(competition_count: 31, deadline_at: 6.days.from_now.iso8601, listing_closed: false))
+    lead = Lead.find(response.parsed_body.dig("lead", "id"))
+    assert_equal 31, lead.competition_count
+    assert lead.deadline_at.future?
+    ingest(payload(competition_count: -1))
+    assert_includes response.parsed_body.dig("error", "details").keys, "competition_count"
+  end
+
   test "validation errors are reported per field" do
     ingest(payload(source: "desconocida", text_excerpt: "", original_url: "javascript:alert(1)", country_hint: "ZZ"))
     assert_response :unprocessable_content

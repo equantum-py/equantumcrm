@@ -43,6 +43,7 @@ class LeadsController < ApplicationController
         @lead.ai_analyses.create!(kind: "scoring_proposal", provider: "skill:claude", engine_version: "skills-v1", output: analysis_output)
       end
     end
+    @lead.refresh_priority!
     AnalyzeLeadJob.perform_later(@lead) if analysis_output.nil? && ProspectAiClient.configured?
     redirect_to @lead, notice: analysis_output ? "Prospecto registrado. Revisá el análisis propuesto." : "Prospecto registrado."
   rescue ActiveRecord::RecordInvalid
@@ -56,6 +57,7 @@ class LeadsController < ApplicationController
   def update
     authorize @lead
     if @lead.update(lead_params)
+      @lead.refresh_priority!
       redirect_to @lead, notice: "Prospecto actualizado."
     else
       render :edit, status: :unprocessable_content
@@ -113,10 +115,14 @@ class LeadsController < ApplicationController
       @lead = Lead.find(params[:id])
     end
 
+    # budget_currency first so the amounts are converted with the right number of decimals
     def lead_params
-      params.expect(lead: [ :title, :need_summary, :original_url, :author_display_name, :published_at, :detected_at,
-                            :published_budget_text, :urgency, :source_id, :country_id, :company_id, :owner_id,
-                            :recommended_action, :suggested_message, { service_ids: [] } ])
+      permitted = params.expect(lead: [ :title, :need_summary, :original_url, :author_display_name, :published_at, :detected_at,
+                                        :published_budget_text, :urgency, :source_id, :country_id, :company_id, :owner_id,
+                                        :recommended_action, :suggested_message, :budget_currency, :budget_min_amount,
+                                        :budget_max_amount, :competition_count, :deadline_at, :listing_closed, :estimated_hours,
+                                        { service_ids: [] } ])
+      permitted.to_h.sort_by { |key, _| key.end_with?("_amount") ? 1 : 0 }.to_h
     end
 
     def duplicate_for(lead)
