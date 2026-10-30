@@ -1,0 +1,24 @@
+<% content_for :title, "Puntuar prospecto" %>
+<%= render "shared/page_header", title: "Puntuar: #{@lead.title}", subtitle: "Rúbrica v#{@criteria.first&.version}. Si un dato no está en la fuente, asigná 0 y explicalo: no se completa con suposiciones." %>
+<%= form_with url: lead_score_path(@lead), method: :patch, class: "max-w-4xl space-y-3" do |f| %>
+  <% @criteria.each do |criterion| %>
+    <% score = @scores[criterion.id] %>
+    <fieldset class="grid gap-3 rounded-lg bg-white p-4 ring-1 ring-slate-200 md:grid-cols-[1fr_7rem_9rem]">
+      <legend class="sr-only"><%= criterion.name %></legend>
+      <div>
+        <p class="text-sm font-medium"><%= criterion.name %> <span class="text-slate-400">(máx. <%= criterion.max_points %>)</span></p>
+        <%= text_field_tag "scores[#{criterion.key}][justification]", score&.justification, placeholder: "Justificación", class: "#{ApplicationHelper::INPUT_CLASS} mt-2", "aria-label": "Justificación #{criterion.name}" %>
+      </div>
+      <label class="text-sm"><span class="<%= ApplicationHelper::LABEL_CLASS %>">Puntos</span>
+        <%= number_field_tag "scores[#{criterion.key}][points]", score&.points, min: 0, max: criterion.max_points, class: ApplicationHelper::INPUT_CLASS %>
+      </label>
+      <label class="text-sm"><span class="<%= ApplicationHelper::LABEL_CLASS %>">Base</span>
+        <%= select_tag "scores[#{criterion.key}][basis]", options_for_select([["Verificado", "verified"], ["Inferido", "inferred"]], score&.basis || "verified"), class: ApplicationHelper::INPUT_CLASS %>
+      </label>
+    </fieldset>
+  <% end %>
+  <div class="flex gap-2">
+    <%= f.submit "Guardar puntuación", class: ApplicationHelper::BUTTON_PRIMARY %>
+    <%= link_to "Cancelar", @lead, class: ApplicationHelper::BUTTON_SECONDARY %>
+  </div>
+<% end %>

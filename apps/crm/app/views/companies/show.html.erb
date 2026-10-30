@@ -1,0 +1,39 @@
+<% content_for :title, @company.trade_name %>
+<p class="text-sm"><%= link_to "← Empresas", companies_path, class: "text-slate-500 hover:text-slate-700" %></p>
+<%= render "shared/page_header", title: @company.trade_name, subtitle: [@company.legal_name, @company.sector, @company.country&.name].compact_blank.join(" · ").presence,
+      actions: safe_join([
+        (policy(Opportunity).create? ? link_to("Nueva oportunidad", new_opportunity_path(company_id: @company.id), class: ApplicationHelper::BUTTON_PRIMARY) : nil),
+        (policy(@company).update? ? link_to("Editar", edit_company_path(@company), class: ApplicationHelper::BUTTON_SECONDARY) : nil),
+        (policy(@company).destroy? ? button_to("Eliminar", @company, method: :delete, class: ApplicationHelper::BUTTON_DANGER, form: { data: { turbo_confirm: "¿Eliminar esta empresa?" } }) : nil)
+      ].compact) %>
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+      <h2 class="text-sm font-semibold">Oportunidades</h2>
+      <% if @opportunities.any? %>
+        <ul class="mt-2 divide-y divide-slate-100 text-sm">
+          <% @opportunities.each do |o| %><li class="flex items-center justify-between gap-3 py-2"><%= link_to o.name, o, class: "font-medium hover:text-indigo-600" %><%= stage_badge(o.pipeline_stage) %></li><% end %>
+        </ul>
+      <% else %><p class="mt-2 text-sm text-slate-500">Sin oportunidades.</p><% end %>
+    </section>
+    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+      <h2 class="text-sm font-semibold">Prospectos de origen</h2>
+      <% if @leads.any? %>
+        <ul class="mt-2 divide-y divide-slate-100 text-sm"><% @leads.each do |l| %><li class="flex items-center justify-between gap-3 py-2"><%= link_to l.title, l, class: "hover:text-indigo-600" %><%= score_badge(l) %></li><% end %></ul>
+      <% else %><p class="mt-2 text-sm text-slate-500">Sin prospectos asociados.</p><% end %>
+    </section>
+    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+      <h2 class="mb-3 text-sm font-semibold">Historial comercial</h2>
+      <%= render "activities/form", subject: @company %>
+      <%= render "activities/list", activities: @activities %>
+    </section>
+  </div>
+  <aside class="rounded-lg bg-white p-5 ring-1 ring-slate-200 h-fit">
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between gap-3"><dt class="text-slate-500">Sitio web</dt><dd><%= @company.website.present? ? external_link(@company.normalized_domain, @company.website, class: "text-indigo-600 hover:underline") : "—" %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-slate-500">Responsable</dt><dd><%= @company.owner&.name || "—" %></dd></div>
+      <div class="flex justify-between gap-3"><dt class="text-slate-500">Servicios de interés</dt><dd class="text-right"><%= @company.services.map(&:name).join(", ").presence || "—" %></dd></div>
+    </dl>
+    <% if @company.notes.present? %><p class="mt-4 whitespace-pre-line border-t border-slate-100 pt-3 text-sm text-slate-700"><%= @company.notes %></p><% end %>
+  </aside>
+</div>

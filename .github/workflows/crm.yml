@@ -1,0 +1,65 @@
+name: CRM
+
+on:
+  pull_request:
+    paths:
+      - "apps/crm/**"
+      - ".github/workflows/crm.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/crm/**"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/crm
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U crm" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      RAILS_ENV: test
+      DB_HOST: localhost
+      DB_USERNAME: crm
+      DB_PASSWORD: crm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/crm
+          bundler-cache: true
+      - run: bin/rails db:create db:schema:load
+      - run: bin/rails test
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/crm
+          bundler-cache: true
+      - run: bin/brakeman --no-pager --exit-on-warn
+      - run: bin/bundler-audit check --update
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/crm
+          bundler-cache: true
+      - run: bin/rubocop

@@ -1,0 +1,10 @@
+<% if policy(Activity).create? %>
+  <%= form_with model: Activity.new, url: activities_path, class: "grid gap-2 sm:grid-cols-[9rem_1fr_11rem_auto]" do |f| %>
+    <%= f.hidden_field :subject_type, value: subject.class.name %>
+    <%= f.hidden_field :subject_id, value: subject.id %>
+    <%= f.select :kind, ApplicationHelper::ACTIVITY_KINDS.invert, {}, class: ApplicationHelper::INPUT_CLASS, "aria-label": "Tipo" %>
+    <%= f.text_field :title, required: true, placeholder: "Ej.: Llamar para pedir catálogo", class: ApplicationHelper::INPUT_CLASS, "aria-label": "Título" %>
+    <%= f.datetime_local_field :due_at, class: ApplicationHelper::INPUT_CLASS, "aria-label": "Vence" %>
+    <%= f.submit "Agregar", class: ApplicationHelper::BUTTON_SECONDARY %>
+  <% end %>
+<% end %>

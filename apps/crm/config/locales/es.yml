@@ -1,0 +1,80 @@
+es:
+  date:
+    formats:
+      short_es: "%d/%m/%Y"
+    day_names: [domingo, lunes, martes, miércoles, jueves, viernes, sábado]
+    abbr_day_names: [dom, lun, mar, mié, jue, vie, sáb]
+    month_names: [~, enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre]
+    abbr_month_names: [~, ene, feb, mar, abr, may, jun, jul, ago, sep, oct, nov, dic]
+    order:
+      - :day
+      - :month
+      - :year
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "La validación falló: %{errors}"
+        restrict_dependent_destroy:
+          has_one: "No se puede eliminar porque existe un registro dependiente"
+          has_many: "No se puede eliminar porque existen registros dependientes"
+    models:
+      lead: Prospecto
+      company: Empresa
+      opportunity: Oportunidad
+      activity: Actividad
+      service_rate: Tarifa
+      user: Usuario
+    attributes:
+      lead:
+        title: Título
+        need_summary: Necesidad
+        original_url: Enlace original
+        published_at: Fecha de publicación
+        source: Fuente
+        fingerprint: Enlace
+        discard_reason: Motivo de descarte
+        status: Estado
+      company:
+        trade_name: Nombre comercial
+        website: Sitio web
+        normalized_domain: Dominio
+      opportunity:
+        name: Nombre
+        company: Empresa
+        pipeline_stage: Etapa
+        lost_reason: Motivo de pérdida
+        currency: Moneda
+        estimated_value_cents: Valor estimado
+      service_rate:
+        service: Servicio
+        currency: Moneda
+        unit: Modalidad
+        min_cents: Precio mínimo
+        max_cents: Precio máximo
+        valid_from: Vigente desde
+        valid_until: Vigente hasta
+      user:
+        name: Nombre
+        email_address: Correo
+        password: Contraseña
+        role: Rol
+      lead_score:
+        points: Puntos
+      activity:
+        title: Título
+        kind: Tipo
+  errors:
+    messages:
+      blank: "no puede estar vacío"
+      taken: "ya está en uso"
+      inclusion: "no es un valor válido"
+      too_short: "es demasiado corto (mínimo %{count} caracteres)"
+      too_long: "es demasiado largo (máximo %{count} caracteres)"
+      invalid: "no es válido"
+      required: "es obligatorio"
+      not_a_number: "no es un número"
+      greater_than_or_equal_to: "debe ser mayor o igual a %{count}"
+      greater_than: "debe ser mayor que %{count}"
+      in: "debe estar entre %{count}"
+      not_an_integer: "debe ser un número entero"
+      confirmation: "no coincide"

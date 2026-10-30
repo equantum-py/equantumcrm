@@ -1,0 +1,22 @@
+<% content_for :title, "Usuarios" %>
+<%= render "shared/page_header", title: "Usuarios", actions: link_to("Nuevo usuario", new_admin_user_path, class: ApplicationHelper::BUTTON_PRIMARY) %>
+<div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr><th class="px-4 py-3">Nombre</th><th class="px-4 py-3">Rol</th><th class="px-4 py-3 hidden md:table-cell">Último ingreso</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3"></th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% @users.each do |user| %>
+          <tr>
+            <td class="px-4 py-3"><p class="font-medium"><%= user.name %></p><p class="text-xs text-slate-500"><%= user.email_address %></p></td>
+            <td class="px-4 py-3"><%= user.role.name %></td>
+            <td class="px-4 py-3 hidden md:table-cell"><%= datetime_label(user.last_sign_in_at) %></td>
+            <td class="px-4 py-3"><%= user.active? ? badge("Activo", "bg-emerald-50 text-emerald-700 ring-emerald-600/20") : badge("Inactivo", "bg-slate-100 text-slate-600 ring-slate-500/20") %></td>
+            <td class="px-4 py-3 text-right"><%= link_to "Editar", edit_admin_user_path(user), class: "font-medium text-indigo-600 hover:underline" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

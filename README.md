@@ -11,11 +11,11 @@ El sistema tiene cinco responsabilidades:
 
 ## Estado
 
-**Fase 01 — Diagnóstico y arquitectura.** Hay documentación y Skills; todavía no hay código de aplicación.
+**Fase 02 — Fundamentos del CRM.** CRM Rails funcional en entorno de desarrollo; Prospect AI (Python) pendiente de Fase 03.
 
 | Componente | Ruta | Estado |
 |---|---|---|
-| CRM (Ruby on Rails 8, PostgreSQL, Hotwire, Tailwind) | `apps/crm/` | Diseñado — se crea en Fase 02 |
+| CRM (Ruby on Rails 8, PostgreSQL, Hotwire, Tailwind) | [`apps/crm/`](apps/crm/README.md) | Núcleo funcional en desarrollo (Fase 02) |
 | Prospect AI (Python, FastAPI, Pydantic) | `services/prospect-ai/` | Diseñado — se crea en Fase 03 |
 | Skills de Claude (8) | [`skills/`](skills/) | Escritas v1, validadas en CI |
 | Documentación | [`docs/`](docs/README.md) | Fase 01 |

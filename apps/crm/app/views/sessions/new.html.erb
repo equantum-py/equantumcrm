@@ -1,0 +1,14 @@
+<h1 class="text-xl font-semibold">Ingresar</h1>
+<p class="mt-1 text-sm text-slate-500">Acceso para el equipo comercial de eQuantum.</p>
+<%= form_with url: session_url, class: "mt-6 space-y-4" do |form| %>
+  <div>
+    <%= form.label :email_address, "Correo", class: ApplicationHelper::LABEL_CLASS %>
+    <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", value: params[:email_address], class: ApplicationHelper::INPUT_CLASS %>
+  </div>
+  <div>
+    <%= form.label :password, "Contraseña", class: ApplicationHelper::LABEL_CLASS %>
+    <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: ApplicationHelper::INPUT_CLASS %>
+  </div>
+  <%= form.submit "Ingresar", class: "#{ApplicationHelper::BUTTON_PRIMARY} w-full" %>
+  <p class="text-center text-sm"><%= link_to "¿Olvidaste tu contraseña?", new_password_path, class: "text-indigo-600 hover:underline" %></p>
+<% end %>

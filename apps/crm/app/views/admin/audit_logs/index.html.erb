@@ -1,0 +1,25 @@
+<% content_for :title, "Auditoría" %>
+<%= render "shared/page_header", title: "Registro de auditoría", subtitle: "Últimos 200 eventos. Solo lectura." %>
+<%= form_with url: admin_audit_logs_path, method: :get, class: "mb-4 max-w-xs" do %>
+  <%= render "shared/filter_select", name: :type, label: "Todos los tipos", options: %w[Lead Company Opportunity Activity ServiceRate User].map { |t| [t, t] }, value: params[:type] %>
+<% end %>
+<div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Usuario</th><th class="px-4 py-3">Acción</th><th class="px-4 py-3">Registro</th><th class="px-4 py-3 hidden lg:table-cell">Cambios</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% @logs.each do |log| %>
+          <tr class="align-top">
+            <td class="px-4 py-2 whitespace-nowrap"><%= datetime_label(log.created_at) %></td>
+            <td class="px-4 py-2"><%= log.actor&.name || "Sistema" %></td>
+            <td class="px-4 py-2"><%= log.action %></td>
+            <td class="px-4 py-2"><%= log.auditable_type %> #<%= log.auditable_id %></td>
+            <td class="px-4 py-2 hidden lg:table-cell"><code class="block max-w-xl truncate text-xs text-slate-600"><%= log.changeset.keys.join(", ") %></code></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

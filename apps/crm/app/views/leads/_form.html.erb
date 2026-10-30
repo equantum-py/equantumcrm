@@ -1,0 +1,82 @@
+<%= form_with model: lead, class: "space-y-6" do |f| %>
+  <%= form_errors(lead) %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="sm:col-span-2">
+      <%= f.label :original_url, "Enlace original de la publicación", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.url_field :original_url, placeholder: "https://…", class: ApplicationHelper::INPUT_CLASS, autofocus: lead.new_record? %>
+      <p class="mt-1 text-xs text-slate-500">Se usa para detectar duplicados (se ignoran parámetros de seguimiento y versiones móviles).</p>
+      <%= field_error(lead, :original_url) %><%= field_error(lead, :fingerprint) %>
+    </div>
+    <div class="sm:col-span-2">
+      <%= f.label :title, "Título corto", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.text_field :title, required: true, maxlength: 200, placeholder: "Ej.: Busca tienda online para negocio de ropa", class: ApplicationHelper::INPUT_CLASS %>
+      <%= field_error(lead, :title) %>
+    </div>
+    <div class="sm:col-span-2">
+      <%= f.label :need_summary, lead.new_record? ? "Extracto literal de la publicación" : "Necesidad", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.text_area :need_summary, rows: 4, maxlength: 2000, class: ApplicationHelper::INPUT_CLASS, placeholder: "Pegá solo el texto que prueba la intención. No copies comentarios de terceros." %>
+    </div>
+    <div>
+      <%= f.label :source_id, "Fuente", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.select :source_id, options_for_sources, { include_blank: "Elegí la fuente" }, required: true, class: ApplicationHelper::INPUT_CLASS %>
+      <%= field_error(lead, :source) %>
+    </div>
+    <div>
+      <%= f.label :country_id, "País (si está explícito)", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.select :country_id, options_for_countries, { include_blank: "Desconocido" }, class: ApplicationHelper::INPUT_CLASS %>
+    </div>
+    <div>
+      <%= f.label :published_at, "Fecha de publicación visible", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.date_field :published_at, value: lead.published_at&.to_date, class: ApplicationHelper::INPUT_CLASS %>
+      <p class="mt-1 text-xs text-slate-500">Dejala vacía si no se ve en la fuente.</p>
+      <%= field_error(lead, :published_at) %>
+    </div>
+    <div>
+      <%= f.label :urgency, "Urgencia", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.select :urgency, ApplicationHelper::URGENCIES.invert, {}, class: ApplicationHelper::INPUT_CLASS %>
+    </div>
+    <div>
+      <%= f.label :author_display_name, "Autor (nombre público)", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.text_field :author_display_name, maxlength: 120, class: ApplicationHelper::INPUT_CLASS %>
+    </div>
+    <div>
+      <%= f.label :published_budget_text, "Presupuesto publicado (literal)", class: ApplicationHelper::LABEL_CLASS %>
+      <%= f.text_field :published_budget_text, maxlength: 120, placeholder: "Vacío si no lo publica", class: ApplicationHelper::INPUT_CLASS %>
+    </div>
+    <fieldset class="sm:col-span-2">
+      <legend class="<%= ApplicationHelper::LABEL_CLASS %>">Servicios solicitados</legend>
+      <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+        <%= f.collection_check_boxes :service_ids, Service.active.ordered, :id, :name do |b| %>
+          <label class="flex items-center gap-2 text-sm"><%= b.check_box(class: "rounded border-slate-300 text-indigo-600") %><%= b.text %></label>
+        <% end %>
+      </div>
+    </fieldset>
+    <% unless lead.new_record? %>
+      <div class="sm:col-span-2">
+        <%= f.label :recommended_action, "Acción recomendada", class: ApplicationHelper::LABEL_CLASS %>
+        <%= f.text_field :recommended_action, class: ApplicationHelper::INPUT_CLASS %>
+      </div>
+      <div class="sm:col-span-2">
+        <%= f.label :suggested_message, "Mensaje sugerido (borrador, no se envía)", class: ApplicationHelper::LABEL_CLASS %>
+        <%= f.text_area :suggested_message, rows: 4, class: ApplicationHelper::INPUT_CLASS %>
+      </div>
+      <div>
+        <%= f.label :owner_id, "Responsable", class: ApplicationHelper::LABEL_CLASS %>
+        <%= f.select :owner_id, options_for_users, { include_blank: "Sin asignar" }, class: ApplicationHelper::INPUT_CLASS %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if lead.new_record? %>
+    <details class="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200" <%= "open" if @analysis_text.present? %>>
+      <summary class="cursor-pointer text-sm font-semibold">Análisis de Claude (opcional)</summary>
+      <p class="mt-2 text-xs text-slate-600">Pegá el bloque JSON que devuelve la Skill <code>eq-lead-qualifier</code>. Queda como propuesta pendiente: no cambia la puntuación hasta que alguien lo acepte.</p>
+      <%= text_area_tag "lead[analysis]", @analysis_text, rows: 6, class: "#{ApplicationHelper::INPUT_CLASS} mt-2 font-mono text-xs", placeholder: '{"services": ["ecommerce"], "criteria": [{"key": "explicit_intent", "points": 25, "basis": "verified", "justification": "…"}], "recommended_action": "…", "draft_message": "…"}' %>
+    </details>
+  <% end %>
+
+  <div class="flex gap-2">
+    <%= f.submit lead.new_record? ? "Registrar prospecto" : "Guardar cambios", class: ApplicationHelper::BUTTON_PRIMARY %>
+    <%= link_to "Cancelar", lead.new_record? ? leads_path : lead, class: ApplicationHelper::BUTTON_SECONDARY %>
+  </div>
+<% end %>

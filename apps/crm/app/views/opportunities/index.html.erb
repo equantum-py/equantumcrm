@@ -1,0 +1,76 @@
+<% content_for :title, "Pipeline" %>
+<%= render "shared/page_header", title: "Pipeline comercial",
+      actions: safe_join([
+        tag.div(class: "inline-flex rounded-md ring-1 ring-slate-300 ring-inset") {
+          safe_join([
+            link_to("Kanban", opportunities_path(@filters.to_h.merge(view: "kanban")), class: "px-3 py-2 text-sm font-medium rounded-l-md #{@view == 'kanban' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}"),
+            link_to("Tabla", opportunities_path(@filters.to_h.merge(view: "table")), class: "px-3 py-2 text-sm font-medium rounded-r-md #{@view == 'table' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}")
+          ])
+        },
+        (policy(Opportunity).create? ? link_to("Nueva oportunidad", new_opportunity_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil)
+      ].compact) %>
+
+<%= form_with url: opportunities_path, method: :get, class: "mb-4 grid grid-cols-2 gap-2 md:grid-cols-4", data: { turbo_action: "advance" } do |f| %>
+  <%= hidden_field_tag :view, @view %>
+  <%= f.search_field :q, value: @filters[:q], placeholder: "Buscar oportunidad o empresa…", class: ApplicationHelper::INPUT_CLASS, "aria-label": "Buscar" %>
+  <%= render "shared/filter_select", name: :owner_id, label: "Todos los responsables", options: options_for_users, value: @filters[:owner_id] %>
+  <%= render "shared/filter_select", name: :country_id, label: "Todos los países", options: options_for_countries, value: @filters[:country_id] %>
+  <%= render "shared/filter_select", name: :service_id, label: "Todos los servicios", options: options_for_services, value: @filters[:service_id] %>
+<% end %>
+
+<% if @view == "kanban" %>
+  <% grouped = @opportunities.group_by(&:pipeline_stage_id) %>
+  <div class="-mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0" data-controller="kanban">
+    <div class="flex gap-3">
+      <% @stages.each do |stage| %>
+        <% cards = grouped.fetch(stage.id, []) %>
+        <section class="w-72 shrink-0 rounded-lg bg-slate-100/80 p-2" data-kanban-target="column" data-stage-id="<%= stage.id %>" data-stage-kind="<%= stage.kind %>"
+                 data-action="dragover->kanban#dragover dragleave->kanban#dragleave drop->kanban#drop" aria-label="<%= stage.name %>">
+          <header class="flex items-center justify-between px-2 py-1.5">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-600"><%= stage.name %></h2>
+            <span class="text-xs tabular-nums text-slate-500"><%= cards.size %></span>
+          </header>
+          <div class="min-h-16 space-y-2" data-cards>
+            <% cards.each do |o| %>
+              <article class="cursor-grab rounded-md bg-white p-3 shadow-xs ring-1 ring-slate-200 hover:ring-indigo-300" draggable="<%= policy(o).move? %>"
+                       data-id="<%= o.id %>" data-action="dragstart->kanban#dragstart">
+                <%= link_to o.name, o, class: "block text-sm font-medium leading-snug hover:text-indigo-600" %>
+                <p class="mt-1 truncate text-xs text-slate-500"><%= o.company.trade_name %></p>
+                <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
+                  <span><%= o.estimated_value || "Sin valor" %></span>
+                  <span title="Días en la etapa"><%= o.days_in_stage %> d · <%= o.owner.name.split.first %></span>
+                </div>
+              </article>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+    </div>
+  </div>
+  <p class="mt-2 text-xs text-slate-500">Arrastrá una tarjeta para cambiar de etapa. En mobile, abrí la oportunidad y usá el selector de etapa.</p>
+<% else %>
+  <% if @opportunities.any? %>
+    <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr><th class="px-4 py-3">Oportunidad</th><th class="px-4 py-3">Etapa</th><th class="px-4 py-3 hidden md:table-cell">Valor</th><th class="px-4 py-3 hidden md:table-cell">Responsable</th><th class="px-4 py-3 hidden lg:table-cell">Cierre esperado</th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% @opportunities.each do |o| %>
+              <tr class="hover:bg-slate-50">
+                <td class="px-4 py-3"><%= link_to o.name, o, class: "font-medium hover:text-indigo-600" %><p class="text-xs text-slate-500"><%= o.company.trade_name %></p></td>
+                <td class="px-4 py-3"><%= stage_badge(o.pipeline_stage) %></td>
+                <td class="px-4 py-3 hidden md:table-cell tabular-nums"><%= o.estimated_value || "—" %></td>
+                <td class="px-4 py-3 hidden md:table-cell"><%= o.owner.name %></td>
+                <td class="px-4 py-3 hidden lg:table-cell"><%= o.expected_close_on ? l(o.expected_close_on, format: :short_es) : "—" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% else %>
+    <%= render "shared/empty_state", title: "No hay oportunidades", body: "Convertí un prospecto calificado o creá una oportunidad desde una empresa." %>
+  <% end %>
+<% end %>
