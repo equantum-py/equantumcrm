@@ -43,7 +43,7 @@ class ApiLeadIngestionTest < ActionDispatch::IntegrationTest
   end
 
   test "stores an attached analysis as pending review without scoring" do
-    analysis = { engine_version: "rules-test", services: [ "ecommerce", "inventado" ],
+    analysis = { engine_version: "rules-test", services: [ { key: "ecommerce", confidence: 0.8 }, { key: "inventado", confidence: 0.9 } ],
                  criteria: [ { key: "explicit_intent", points: 25, basis: "verified", justification: "dice busco" } ] }
     ingest(payload(analysis: analysis))
     assert_response :created

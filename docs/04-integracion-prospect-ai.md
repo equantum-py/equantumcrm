@@ -1,6 +1,13 @@
 # 04 — Integración Prospect AI ⇄ CRM
 
-Estado: **diseño de contrato**. Se implementa en Fase 03 con JSON Schema en `contracts/`.
+Estado: **implementado en Fase 03** (ingesta, análisis por reglas, autenticación entre servicios). Código: `apps/crm/app/controllers/api/v1/`, `services/prospect-ai/`. Vectores de huella compartidos: `contracts/fingerprint-vectors.json`.
+
+Diferencias con el borrador:
+- La ingesta acepta un campo opcional `analysis` (salida de `/v1/analyze`). Se guarda como análisis pendiente; no puntúa ni califica.
+- `422` también cuando falta `Idempotency-Key` (8 a 128 caracteres); `400` si el cuerpo no es JSON.
+- Rails responde con `Idempotent-Replayed: true` cuando repite una respuesta guardada.
+- Los tokens de servicio se emiten con `bin/rails api_clients:create`, se guardan solo como SHA-256 y cada acción queda en auditoría con el cliente de API.
+- `AnalyzeLeadJob` pide el análisis para capturas manuales solo si `PROSPECT_AI_URL` y `PROSPECT_AI_TOKEN` están definidas.
 
 ## 1. Flujos
 
