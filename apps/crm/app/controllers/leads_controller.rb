@@ -43,6 +43,7 @@ class LeadsController < ApplicationController
         @lead.ai_analyses.create!(kind: "scoring_proposal", provider: "skill:claude", engine_version: "skills-v1", output: analysis_output)
       end
     end
+    AnalyzeLeadJob.perform_later(@lead) if analysis_output.nil? && ProspectAiClient.configured?
     redirect_to @lead, notice: analysis_output ? "Prospecto registrado. Revisá el análisis propuesto." : "Prospecto registrado."
   rescue ActiveRecord::RecordInvalid
     render :new, status: :unprocessable_content

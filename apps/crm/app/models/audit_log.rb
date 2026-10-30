@@ -1,6 +1,7 @@
 class AuditLog < ApplicationRecord
   belongs_to :actor, class_name: "User", optional: true
   belongs_to :auditable, polymorphic: true, optional: true
+  belongs_to :api_client, optional: true
 
   validates :action, presence: true
 
@@ -12,6 +13,7 @@ class AuditLog < ApplicationRecord
       auditable: auditable,
       changeset: changeset,
       actor: Current.user,
+      api_client: Current.api_client,
       ip_address: Current.ip_address,
       request_id: Current.request_id
     )

@@ -1,0 +1,61 @@
+{
+  "description": "Casos compartidos de huella. Rails (Lead.fingerprint_for) y Prospect AI deben producir el mismo resultado. Datos sintéticos.",
+  "cases": [
+    {
+      "name": "url simple",
+      "source": "freelance_other",
+      "url": "https://www.freelancer.com/projects/shopify-site/demo-123",
+      "text": "x",
+      "expected": "sha256:08aac77cc1bdbfc71b619275f6b8933c1a3a3bc467195583a592f5be82f6e1ce"
+    },
+    {
+      "name": "movil y seguimiento",
+      "source": "facebook_group",
+      "url": "https://m.facebook.com/groups/123/posts/456/?utm_source=x&fbclid=abc&ref=share#comments",
+      "text": "x",
+      "expected": "sha256:f6f4c14c1ebe49c51318146170f8f1d4c1d23771611a26ebb0acd0509aed048e"
+    },
+    {
+      "name": "mbasic igual que www",
+      "source": "facebook_group",
+      "url": "https://mbasic.facebook.com/groups/123/posts/456",
+      "text": "otro texto",
+      "expected": "sha256:f6f4c14c1ebe49c51318146170f8f1d4c1d23771611a26ebb0acd0509aed048e"
+    },
+    {
+      "name": "query ordenada",
+      "source": "google_search",
+      "url": "HTTPS://Example.COM/path/?b=2&a=1&utm_campaign=z",
+      "text": "x",
+      "expected": "sha256:c7fd3768059cbba04b6fc985a96aeb2a5f34ff37a35dfc0ab15bd9647e2a894f"
+    },
+    {
+      "name": "barra final",
+      "source": "google_search",
+      "url": "https://example.com/servicios///",
+      "text": "x",
+      "expected": "sha256:a23729dfd5290e67b6979d34da900e2fd429f45f176a1a11bce7ff5d05af033a"
+    },
+    {
+      "name": "sin url usa texto",
+      "source": "manual",
+      "url": null,
+      "text": "  Busco quien haga mi TIENDA online, ¡urgente!  ",
+      "expected": "sha256:9c89a5b5cef2a1b68e31b0bdb6dcd3ffc8608582eb5ad13b9a76fd91819e05c7"
+    },
+    {
+      "name": "texto con acentos",
+      "source": "manual",
+      "url": "",
+      "text": "Necesito página web — Asunción, 2026",
+      "expected": "sha256:b9d3f9c8707a00b032280a672be43e2117dae0f7f70231b5926079fbd5ee205f"
+    },
+    {
+      "name": "url invalida usa texto",
+      "source": "manual",
+      "url": "ftp://example.com/a",
+      "text": "Diseño de logo",
+      "expected": "sha256:31fc3c5a090a2b76355806fce26608bee3a4975ebff97ac7707fac8c8cf7e8b6"
+    }
+  ]
+}

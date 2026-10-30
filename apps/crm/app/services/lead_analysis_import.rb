@@ -19,7 +19,7 @@ class LeadAnalysisImport
     service_keys = Service.active.pluck(:key)
 
     {
-      "services" => Array(data["services"] || data["service_keys"]).map(&:to_s) & service_keys,
+      "services" => service_keys_from(data) & service_keys,
       "has_commercial_intent" => data["has_commercial_intent"],
       "country" => data["country"].presence || data["country_hint"].presence,
       "criteria" => normalize_criteria(Array(data["criteria"]), criteria_by_key),
@@ -38,6 +38,11 @@ class LeadAnalysisImport
       rescue Psych::Exception
         raise Invalid, "No se pudo leer el análisis: formato JSON/YAML inválido"
       end
+    end
+
+    # Skills send ["seo"]; Prospect AI sends [{"key": "seo", "confidence": 0.8}].
+    def service_keys_from(data)
+      Array(data["services"] || data["service_keys"]).map { |item| item.is_a?(Hash) ? item["key"].to_s : item.to_s }
     end
 
     def normalize_criteria(items, criteria_by_key)

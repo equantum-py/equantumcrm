@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_30_194600) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -50,6 +50,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_194600) do
     t.check_constraint "status::text = ANY (ARRAY['pending_review'::character varying, 'accepted'::character varying, 'rejected'::character varying, 'superseded'::character varying]::text[])", name: "ai_analyses_status"
   end
 
+  create_table "api_clients", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "token_digest", null: false
+    t.string "token_prefix", null: false
+    t.string "scopes", default: [], null: false, array: true
+    t.boolean "active", default: true, null: false
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_api_clients_on_name", unique: true
+    t.index ["token_digest"], name: "index_api_clients_on_token_digest", unique: true
+  end
+
   create_table "audit_logs", force: :cascade do |t|
     t.bigint "actor_id"
     t.string "action", null: false
@@ -59,7 +72,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_194600) do
     t.string "ip_address"
     t.string "request_id"
     t.datetime "created_at", null: false
+    t.bigint "api_client_id"
     t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
+    t.index ["api_client_id"], name: "index_audit_logs_on_api_client_id"
     t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
   end
@@ -101,6 +116,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_194600) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["iso2"], name: "index_countries_on_iso2", unique: true
+  end
+
+  create_table "ingestion_requests", force: :cascade do |t|
+    t.bigint "api_client_id", null: false
+    t.string "idempotency_key", null: false
+    t.string "request_sha256", null: false
+    t.integer "response_status", null: false
+    t.jsonb "response_body", default: {}, null: false
+    t.bigint "lead_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["api_client_id", "idempotency_key"], name: "index_ingestion_requests_on_api_client_id_and_idempotency_key", unique: true
+    t.index ["api_client_id"], name: "index_ingestion_requests_on_api_client_id"
+    t.index ["lead_id"], name: "index_ingestion_requests_on_lead_id"
+    t.check_constraint "char_length(idempotency_key::text) >= 8 AND char_length(idempotency_key::text) <= 128", name: "ingestion_requests_key_length"
   end
 
   create_table "lead_evidences", force: :cascade do |t|
@@ -169,6 +199,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_194600) do
     t.text "recommended_action"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "external_id"
+    t.boolean "published_at_verified", default: false, null: false
+    t.string "contact_channel_kind"
     t.index ["company_id"], name: "index_leads_on_company_id"
     t.index ["country_id", "detected_at"], name: "index_leads_on_country_id_and_detected_at"
     t.index ["country_id"], name: "index_leads_on_country_id"
@@ -335,11 +368,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_194600) do
 
   add_foreign_key "activities", "users", column: "owner_id"
   add_foreign_key "ai_analyses", "users", column: "reviewed_by_id"
+  add_foreign_key "audit_logs", "api_clients"
   add_foreign_key "audit_logs", "users", column: "actor_id"
   add_foreign_key "companies", "countries"
   add_foreign_key "companies", "users", column: "owner_id"
   add_foreign_key "company_services", "companies", on_delete: :cascade
   add_foreign_key "company_services", "services"
+  add_foreign_key "ingestion_requests", "api_clients"
+  add_foreign_key "ingestion_requests", "leads", on_delete: :nullify
   add_foreign_key "lead_evidences", "leads", on_delete: :cascade
   add_foreign_key "lead_evidences", "users", column: "captured_by_id"
   add_foreign_key "lead_scores", "leads", on_delete: :cascade
