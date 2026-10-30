@@ -131,9 +131,13 @@
       <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
         <h2 class="text-sm font-semibold">Prioridad comercial</h2>
         <p class="mt-2 inline-flex rounded-md px-2 py-1 text-sm font-semibold ring-1 <%= ApplicationHelper::PRIORITY_STYLES[@lead.commercial_priority] %>"><%= CommercialPriority::LABELS[@lead.commercial_priority] %></p>
-        <p class="mt-2 text-xs text-slate-500"><%= @lead.priority_score %> / 100 · confianza <%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %><%= " · limitada a media por datos insuficientes" if breakdown["capped_by_confidence"] %></p>
+        <p class="mt-2 text-xs text-slate-500">Atractivo económico <%= @lead.priority_score %> / 100 · confianza <%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %><%= " · limitada a media por datos insuficientes" if breakdown["capped_by_confidence"] %></p>
+        <p class="mt-1 text-xs text-slate-500">Rentabilidad: desconocida (falta <%= Array(breakdown.dig("profitability", "missing")).to_sentence %>)</p>
         <% if breakdown["blockers"].present? %>
           <ul class="mt-3 space-y-1 text-sm text-rose-800"><% breakdown["blockers"].each do |reason| %><li>• <%= reason %></li><% end %></ul>
+        <% end %>
+        <% if breakdown["alerts"].present? %>
+          <ul class="mt-3 space-y-1 text-sm text-amber-800"><% breakdown["alerts"].each do |alert| %><li>• <%= alert %></li><% end %></ul>
         <% end %>
         <dl class="mt-3 space-y-2 text-sm">
           <% Array(breakdown["factors"]).each do |factor| %>

@@ -17,7 +17,7 @@ class Admin::CommercialThresholdsController < ApplicationController
     @threshold.assign_attributes(threshold_params)
     authorize @threshold
     if @threshold.save
-      redirect_to admin_commercial_thresholds_path, notice: "Umbral aprobado y registrado."
+      redirect_to admin_commercial_thresholds_path, notice: "Umbral registrado."
     else
       render :new, status: :unprocessable_content
     end
@@ -50,7 +50,7 @@ class Admin::CommercialThresholdsController < ApplicationController
 
     # currency first so the amounts are converted with the right number of decimals
     def threshold_params
-      permitted = params.expect(commercial_threshold: [ :currency, :min_viable_amount, :high_value_amount, :notes ])
+      permitted = params.expect(commercial_threshold: [ :currency, :medium_from_amount, :high_from_amount, :approval_reference, :notes ])
       permitted.to_h.sort_by { |key, _| key.end_with?("_amount") ? 1 : 0 }.to_h
     end
 end

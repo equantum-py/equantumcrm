@@ -21,18 +21,32 @@ class AddRubricV2AndCommercialPriority < ActiveRecord::Migration[8.1]
     end
     add_check_constraint :services, "value_tier IN ('high','medium','low')", name: "services_value_tier"
 
+    # Classification only: they sort opportunities by size, they are not prices.
     create_table :commercial_thresholds do |t|
       t.string :currency, null: false, limit: 3
-      t.bigint :min_viable_cents, null: false
-      t.bigint :high_value_cents, null: false
-      t.references :approved_by, null: false, foreign_key: { to_table: :users }
+      t.bigint :medium_from_cents, null: false
+      t.bigint :high_from_cents, null: false
+      t.references :approved_by, foreign_key: { to_table: :users }
+      t.string :approval_reference, null: false
       t.datetime :approved_at, null: false
       t.text :notes
       t.timestamps
     end
     add_index :commercial_thresholds, :currency, unique: true
-    add_check_constraint :commercial_thresholds, "min_viable_cents >= 0 AND high_value_cents >= min_viable_cents",
+    add_check_constraint :commercial_thresholds, "medium_from_cents >= 0 AND high_from_cents >= medium_from_cents",
                          name: "commercial_thresholds_range"
+
+    # A rate is only used once approved; new and edited rates wait for approval.
+    add_column :service_rates, :status, :string, null: false, default: "pending"
+    add_reference :service_rates, :created_by, foreign_key: { to_table: :users }
+    change_column_null :service_rates, :approved_by_id, true
+    change_column_null :service_rates, :approved_at, true
+    reversible do |dir|
+      dir.up { execute "UPDATE service_rates SET status = 'approved' WHERE approved_by_id IS NOT NULL" }
+    end
+    add_check_constraint :service_rates, "status IN ('pending','approved','retired')", name: "service_rates_status"
+    add_check_constraint :service_rates, "status <> 'approved' OR (approved_by_id IS NOT NULL AND approved_at IS NOT NULL)",
+                         name: "service_rates_approval"
 
     change_table :leads, bulk: true do |t|
       t.string :budget_currency, limit: 3

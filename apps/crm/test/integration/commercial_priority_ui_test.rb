@@ -6,21 +6,22 @@ class CommercialPriorityUiTest < ActionDispatch::IntegrationTest
     sign_in @admin
   end
 
-  test "admin registers a threshold with currency-aware amounts" do
-    post admin_commercial_thresholds_path, params: { commercial_threshold: { min_viable_amount: "1.500.000", high_value_amount: "9000000", currency: "PYG" } }
-    assert_redirected_to admin_commercial_thresholds_path
+  test "admin edits a threshold with currency-aware amounts and a stated basis" do
     threshold = CommercialThreshold.find_by!(currency: "PYG")
-    assert_equal 1_500_000, threshold.min_viable_cents
+    patch admin_commercial_threshold_path(threshold), params: { commercial_threshold: { medium_from_amount: "4.500.000", high_from_amount: "15000000", approval_reference: "Prueba" } }
+    assert_redirected_to admin_commercial_thresholds_path
+    assert_equal 4_500_000, threshold.reload.medium_from_cents
     assert_equal @admin, threshold.approved_by
     get admin_commercial_thresholds_path
-    assert_select "td", text: "Pendiente de aprobación", count: 4
+    assert_match "No son precios", response.body
   end
 
   test "sales users cannot manage thresholds" do
     delete session_path
     sign_in create_user(role: "sales")
-    post admin_commercial_thresholds_path, params: { commercial_threshold: { currency: "USD", min_viable_amount: "1", high_value_amount: "2" } }
-    assert_nil CommercialThreshold.find_by(currency: "USD")
+    threshold = CommercialThreshold.find_by!(currency: "USD")
+    patch admin_commercial_threshold_path(threshold), params: { commercial_threshold: { medium_from_amount: "1" } }
+    assert_equal 50_000, threshold.reload.medium_from_cents
   end
 
   test "lead form stores commercial data and the page shows priority once v2 is active" do

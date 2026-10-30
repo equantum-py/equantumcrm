@@ -1,12 +1,12 @@
 <% content_for :title, "Umbrales comerciales" %>
-<%= render "shared/page_header", title: "Umbrales comerciales", subtitle: "Mínimo viable y alto valor por moneda, aprobados por Dirección. Sin umbral, el valor económico queda fuera del cálculo de prioridad.",
-      actions: (policy(CommercialThreshold).create? ? link_to("Registrar umbral aprobado", new_admin_commercial_threshold_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
+<%= render "shared/page_header", title: "Umbrales de clasificación", subtitle: "Ordenan las oportunidades por tamaño del presupuesto publicado. No son precios, no se usan para cotizar y nunca descartan una oportunidad por sí solos.",
+      actions: (policy(CommercialThreshold).create? ? link_to("Registrar umbral", new_admin_commercial_threshold_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
 <div class="space-y-6">
   <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-          <tr><th class="px-4 py-3">Moneda</th><th class="px-4 py-3">Mínimo viable</th><th class="px-4 py-3">Alto valor</th><th class="px-4 py-3 hidden md:table-cell">Aprobó</th><th class="px-4 py-3"></th></tr>
+          <tr><th class="px-4 py-3">Moneda</th><th class="px-4 py-3">Medio desde</th><th class="px-4 py-3">Alto desde</th><th class="px-4 py-3 hidden md:table-cell">Origen</th><th class="px-4 py-3"></th></tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <% CommercialThreshold::CURRENCIES.each do |currency| %>
@@ -14,9 +14,9 @@
             <tr>
               <td class="px-4 py-3 font-medium"><%= currency %></td>
               <% if threshold %>
-                <td class="px-4 py-3 tabular-nums"><%= threshold.min_viable_amount %></td>
-                <td class="px-4 py-3 tabular-nums"><%= threshold.high_value_amount %></td>
-                <td class="px-4 py-3 hidden md:table-cell"><%= threshold.approved_by.name %> · <%= l(threshold.approved_at.to_date, format: :short_es) %></td>
+                <td class="px-4 py-3 tabular-nums"><%= threshold.medium_from_amount %></td>
+                <td class="px-4 py-3 tabular-nums"><%= threshold.high_from_amount %></td>
+                <td class="px-4 py-3 hidden md:table-cell"><%= threshold.approved_by ? "#{threshold.approved_by.name}: " : "" %><%= threshold.approval_reference %></td>
                 <td class="px-4 py-3 text-right"><% if policy(threshold).update? %><%= link_to "Editar", edit_admin_commercial_threshold_path(threshold), class: "font-medium text-indigo-600 hover:underline" %><% end %></td>
               <% else %>
                 <td colspan="4" class="px-4 py-3 text-sm font-medium text-amber-700">Pendiente de aprobación</td>

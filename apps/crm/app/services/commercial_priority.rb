@@ -1,17 +1,18 @@
-# Commercial priority (rubric v2), kept apart from the intent score.
+# Rubric v2 keeps three separate readings of a lead:
+#   1. Commercial intent: the rubric score (ScoringCriterion), set by people.
+#   2. Economic attractiveness: this service, from budget, service value,
+#      competition, urgency and age.
+#   3. Confidence: the share of attractiveness weight backed by real data.
 #
-# Each factor is evaluated only when its data exists. Missing data is
-# excluded, never assumed: the score is normalized over the evaluated
-# weight and the share of weight evaluated becomes the confidence. With low
-# confidence a lead cannot be classified above "medium". Profitability is
-# only evaluated against an approved rate.
+# A factor without data is excluded, never assumed. Size thresholds only
+# classify; they never discard a lead. Profitability stays "unknown" until
+# internal costs, an approved rate and estimated hours all exist.
 class CommercialPriority
   WEIGHTS = {
+    "economic_value" => 30,
     "budget_vs_rate" => 25,
-    "economic_value" => 20,
+    "competition" => 20,
     "service_value" => 15,
-    "profitability" => 15,
-    "competition" => 15,
     "urgency" => 5,
     "recency" => 5
   }.freeze
@@ -19,9 +20,11 @@ class CommercialPriority
   LABELS = { "high" => "Prioridad comercial alta", "medium" => "Prioridad comercial media",
              "low" => "Prioridad comercial baja", "not_recommended" => "No recomendable" }.freeze
   HIGH_FROM = 70
-  MEDIUM_FROM = 45
+  MEDIUM_FROM = 50
   MIN_CONFIDENCE = 0.5
   TIER_VALUE = { "high" => 1.0, "medium" => 0.6, "low" => 0.25 }.freeze
+  BAND_VALUE = { "high" => 1.0, "medium" => 0.5, "low" => 0.15 }.freeze
+  BAND_LABELS = { "high" => "alto", "medium" => "medio", "low" => "bajo" }.freeze
   RECURRING_BONUS = 0.3
 
   Result = Data.define(:priority, :score, :confidence, :breakdown) do
@@ -34,6 +37,7 @@ class CommercialPriority
     @factors = []
     @excluded = []
     @blockers = []
+    @alerts = []
   end
 
   def call
@@ -46,7 +50,9 @@ class CommercialPriority
     priority, capped = classify(score, confidence)
 
     Result.new(priority: priority, score: score, confidence: confidence, breakdown: {
-      "factors" => @factors, "excluded" => @excluded, "blockers" => @blockers, "capped_by_confidence" => capped
+      "intent" => intent_reading, "size_band" => size_band, "profitability" => profitability,
+      "factors" => @factors, "excluded" => @excluded, "blockers" => @blockers, "alerts" => @alerts,
+      "capped_by_confidence" => capped
     })
   end
 
@@ -62,6 +68,7 @@ class CommercialPriority
       [ priority, false ]
     end
 
+    # Only facts that make the work impossible or out of policy. Money never blocks.
     def check_blockers
       intent = intent_score
       @blockers << "Sin intención de contratación" if intent && intent.points.zero?
@@ -69,12 +76,6 @@ class CommercialPriority
       @blockers << "Mercado no atendido (#{lead.country.iso2})" if lead.country && !lead.country.target_market
       @blockers << "Publicación cerrada" if lead.listing_closed
       @blockers << "Plazo para ofertar vencido" if lead.deadline_at && lead.deadline_at < @now
-      if budget? && threshold && lead.budget_max_cents < threshold.min_viable_cents
-        @blockers << "Presupuesto por debajo del mínimo viable aprobado (#{threshold.min_viable_amount})"
-      end
-      if budget? && (rate = rate_for_budget) && rate.unit == "project" && lead.budget_max_cents * 2 < rate.min_cents
-        @blockers << "Presupuesto menor a la mitad de la tarifa mínima aprobada (#{rate.min_amount})"
-      end
     end
 
     def evaluate(key)
@@ -87,68 +88,34 @@ class CommercialPriority
       end
     end
 
+    def factor_economic_value
+      return [ nil, "Sin presupuesto publicado" ] unless budget?
+      return [ nil, "Sin umbrales de clasificación para #{lead.budget_currency}" ] unless threshold
+
+      band = size_band
+      reference = band == "high" ? threshold.high_from_amount : threshold.medium_from_amount
+      comparison = band == "low" ? "debajo de" : "desde"
+      [ BAND_VALUE.fetch(band), "Tamaño #{BAND_LABELS[band]} (máximo publicado #{comparison} #{reference})" ]
+    end
+
     def factor_budget_vs_rate
       return [ nil, "Sin presupuesto publicado" ] unless budget?
 
       rate = rate_for_budget
       return [ nil, "Sin tarifa aprobada en #{lead.budget_currency} para estos servicios" ] unless rate
 
-      cost = rate_cost(rate, rate.min_cents)
-      return [ nil, "Tarifa por hora: falta la estimación de horas" ] if cost.nil?
+      cost = price_floor(rate)
+      return [ nil, "Tarifa por hora: faltan horas estimadas" ] if cost.nil?
       return [ nil, "Tarifa mensual: comparar a mano" ] if cost == :monthly
 
       minimum = Money.from_cents(cost, rate.currency)
       if lead.budget_max_cents < cost
-        [ 0, "El presupuesto máximo no cubre la tarifa mínima (#{minimum})" ]
+        @alerts << "El presupuesto publicado no cubre la tarifa mínima aprobada (#{minimum}); revisar alcance antes de ofertar"
+        [ 0, "El máximo publicado no cubre la tarifa mínima (#{minimum})" ]
       elsif lead.budget_min_cents >= cost
         [ 1, "Todo el rango cubre la tarifa mínima (#{minimum})" ]
       else
         [ 0.5, "Solo parte del rango cubre la tarifa mínima (#{minimum})" ]
-      end
-    end
-
-    def factor_economic_value
-      return [ nil, "Sin presupuesto publicado" ] unless budget?
-      return [ nil, "Sin umbrales aprobados para #{lead.budget_currency}" ] unless threshold
-
-      if lead.budget_max_cents >= threshold.high_value_cents
-        [ 1, "Alcanza el umbral de alto valor (#{threshold.high_value_amount})" ]
-      elsif lead.budget_max_cents >= threshold.min_viable_cents
-        [ 0.5, "Entre el mínimo viable y el alto valor" ]
-      else
-        [ 0, "Por debajo del mínimo viable (#{threshold.min_viable_amount})" ]
-      end
-    end
-
-    def factor_service_value
-      service = best_service
-      return [ nil, "Sin servicio del catálogo" ] unless service
-
-      value = TIER_VALUE.fetch(service.value_tier)
-      value = [ value + RECURRING_BONUS, 1.0 ].min if service.recurring
-      [ value, "#{service.name}: valor #{service.value_tier}#{' con potencial recurrente' if service.recurring}" ]
-    end
-
-    def factor_profitability
-      return [ nil, "Sin presupuesto publicado" ] unless budget?
-
-      rate = rate_for_budget
-      return [ nil, "No se estima rentabilidad sin tarifa aprobada" ] unless rate
-
-      floor = rate_cost(rate, rate.min_cents)
-      target = rate_cost(rate, rate.max_cents)
-      return [ nil, "No se estima rentabilidad sin horas estimadas" ] if floor.nil?
-      return [ nil, "Tarifa mensual: estimar a mano" ] if floor == :monthly
-
-      midpoint = (lead.budget_min_cents + lead.budget_max_cents) / 2
-      if midpoint >= target
-        [ 1, "El punto medio del presupuesto alcanza la tarifa máxima aprobada" ]
-      elsif midpoint >= (floor + target) / 2
-        [ 0.6, "El punto medio supera el centro del rango aprobado" ]
-      elsif midpoint >= floor
-        [ 0.3, "El punto medio apenas cubre la tarifa mínima" ]
-      else
-        [ 0, "El punto medio no cubre la tarifa mínima" ]
       end
     end
 
@@ -158,6 +125,15 @@ class CommercialPriority
 
       fraction = count <= 10 ? 1 : count <= 30 ? 0.66 : count <= 100 ? 0.33 : 0
       [ fraction, "#{count} propuestas visibles" ]
+    end
+
+    def factor_service_value
+      service = best_service
+      return [ nil, "Sin servicio del catálogo" ] unless service
+
+      value = TIER_VALUE.fetch(service.value_tier)
+      value = [ value + RECURRING_BONUS, 1.0 ].min if service.recurring
+      [ value, "#{service.name}: valor #{service.value_tier}#{' con potencial recurrente' if service.recurring}" ]
     end
 
     def factor_urgency
@@ -171,6 +147,24 @@ class CommercialPriority
       days = ((@now - lead.published_at) / 1.day).floor
       fraction = days <= 2 ? 1 : days <= 7 ? 0.66 : days <= 30 ? 0.33 : 0
       [ fraction, "Publicado hace #{days} día(s)" ]
+    end
+
+    # The CRM has no internal cost data yet, so profitability cannot be known.
+    def profitability
+      missing = [ "costos internos verificables" ]
+      missing << "tarifa aprobada en la moneda del presupuesto" unless budget? && rate_for_budget
+      missing << "horas estimadas" unless lead.estimated_hours
+      { "status" => "unknown", "missing" => missing }
+    end
+
+    def intent_reading
+      return { "status" => "not_scored" } unless lead.score
+
+      { "status" => "scored", "score" => lead.score, "band" => lead.score_band, "version" => lead.scoring_version }
+    end
+
+    def size_band
+      budget? && threshold ? threshold.band_for(lead.budget_max_cents) : nil
     end
 
     def intent_score
@@ -201,10 +195,10 @@ class CommercialPriority
                       .find { |rate| rate.currency == lead.budget_currency }
     end
 
-    def rate_cost(rate, cents)
+    def price_floor(rate)
       case rate.unit
-      when "project" then cents
-      when "hour" then lead.estimated_hours && cents * lead.estimated_hours
+      when "project" then rate.min_cents
+      when "hour" then lead.estimated_hours && rate.min_cents * lead.estimated_hours
       else :monthly
       end
     end

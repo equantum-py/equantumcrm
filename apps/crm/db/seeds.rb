@@ -12,7 +12,8 @@ permissions = {
   "activities.write" => "Registrar actividades",
   "ai.review" => "Aceptar o rechazar análisis de IA",
   "rates.read" => "Ver tarifas",
-  "rates.manage" => "Aprobar y cargar tarifas",
+  "rates.manage" => "Cargar y editar tarifas",
+  "rates.approve" => "Aprobar tarifas",
   "users.manage" => "Administrar usuarios",
   "audit.read" => "Ver registro de auditoría"
 }
@@ -127,6 +128,8 @@ Service.find_each do |service|
   tier = service_value.find { |_tier, keys| keys.include?(service.key) }&.first || "medium"
   service.update!(value_tier: tier, recurring: recurring.include?(service.key))
 end
+
+CommercialThreshold.load_initial!
 
 # The first administrator comes from the environment; no default password exists.
 if ENV["ADMIN_EMAIL"].present? && ENV["ADMIN_PASSWORD"].present?

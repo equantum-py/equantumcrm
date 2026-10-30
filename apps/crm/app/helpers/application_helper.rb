@@ -81,9 +81,12 @@ module ApplicationHelper
 
   PRIORITY_STYLES = { "high" => "bg-emerald-50 text-emerald-800 ring-emerald-200", "medium" => "bg-sky-50 text-sky-800 ring-sky-200",
                       "low" => "bg-slate-50 text-slate-700 ring-slate-200", "not_recommended" => "bg-rose-50 text-rose-800 ring-rose-200" }.freeze
-  PRIORITY_FACTORS = { "budget_vs_rate" => "Presupuesto vs. tarifa aprobada", "economic_value" => "Valor económico",
-                       "service_value" => "Valor del servicio", "profitability" => "Rentabilidad estimada",
-                       "competition" => "Competencia", "urgency" => "Urgencia", "recency" => "Antigüedad" }.freeze
+  RATE_STATUSES = { "pending" => "Pendiente de aprobación", "approved" => "Aprobada", "retired" => "Retirada" }.freeze
+  RATE_STATUS_STYLES = { "pending" => "bg-amber-50 text-amber-800 ring-amber-200", "approved" => "bg-emerald-50 text-emerald-800 ring-emerald-200",
+                         "retired" => "bg-slate-50 text-slate-600 ring-slate-200" }.freeze
+  PRIORITY_FACTORS = { "budget_vs_rate" => "Presupuesto vs. tarifa aprobada", "economic_value" => "Tamaño del presupuesto",
+                       "service_value" => "Valor del servicio", "competition" => "Competencia", "urgency" => "Urgencia",
+                       "recency" => "Antigüedad" }.freeze
 
   def icon_svg(name, classes = "size-5")
     tag.svg(xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24", "stroke-width": "1.5", stroke: "currentColor", class: classes, aria: { hidden: true }) do

@@ -31,7 +31,9 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :users, except: %i[show destroy]
-    resources :service_rates, except: :show
+    resources :service_rates, except: :show do
+      patch :approve, on: :member
+    end
     resources :commercial_thresholds, except: :show
     resources :audit_logs, only: :index
   end

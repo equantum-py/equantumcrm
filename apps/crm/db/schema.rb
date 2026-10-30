@@ -81,16 +81,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
 
   create_table "commercial_thresholds", force: :cascade do |t|
     t.string "currency", limit: 3, null: false
-    t.bigint "min_viable_cents", null: false
-    t.bigint "high_value_cents", null: false
-    t.bigint "approved_by_id", null: false
+    t.bigint "medium_from_cents", null: false
+    t.bigint "high_from_cents", null: false
+    t.bigint "approved_by_id"
+    t.string "approval_reference", null: false
     t.datetime "approved_at", null: false
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["approved_by_id"], name: "index_commercial_thresholds_on_approved_by_id"
     t.index ["currency"], name: "index_commercial_thresholds_on_currency", unique: true
-    t.check_constraint "min_viable_cents >= 0 AND high_value_cents >= min_viable_cents", name: "commercial_thresholds_range"
+    t.check_constraint "medium_from_cents >= 0 AND high_from_cents >= medium_from_cents", name: "commercial_thresholds_range"
   end
 
   create_table "companies", force: :cascade do |t|
@@ -358,16 +359,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
     t.bigint "max_cents", null: false
     t.date "valid_from", null: false
     t.date "valid_until"
-    t.bigint "approved_by_id", null: false
-    t.datetime "approved_at", null: false
+    t.bigint "approved_by_id"
+    t.datetime "approved_at"
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "status", default: "pending", null: false
+    t.bigint "created_by_id"
     t.index ["approved_by_id"], name: "index_service_rates_on_approved_by_id"
     t.index ["country_id"], name: "index_service_rates_on_country_id"
+    t.index ["created_by_id"], name: "index_service_rates_on_created_by_id"
     t.index ["service_id", "country_id", "valid_from"], name: "idx_on_service_id_country_id_valid_from_46784180d7"
     t.index ["service_id"], name: "index_service_rates_on_service_id"
     t.check_constraint "min_cents >= 0 AND max_cents >= min_cents", name: "service_rates_range"
+    t.check_constraint "status::text <> 'approved'::text OR approved_by_id IS NOT NULL AND approved_at IS NOT NULL", name: "service_rates_approval"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'retired'::character varying]::text[])", name: "service_rates_status"
     t.check_constraint "unit::text = ANY (ARRAY['project'::character varying, 'hour'::character varying, 'month'::character varying]::text[])", name: "service_rates_unit"
     t.check_constraint "valid_until IS NULL OR valid_until >= valid_from", name: "service_rates_validity"
   end
@@ -449,6 +455,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
   add_foreign_key "service_rates", "countries"
   add_foreign_key "service_rates", "services"
   add_foreign_key "service_rates", "users", column: "approved_by_id"
+  add_foreign_key "service_rates", "users", column: "created_by_id"
   add_foreign_key "sessions", "users"
   add_foreign_key "users", "roles"
 end
