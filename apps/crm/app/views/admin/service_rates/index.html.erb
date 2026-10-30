@@ -1,0 +1,33 @@
+<% content_for :title, "Tarifas" %>
+<%= render "shared/page_header", title: "Tarifas autorizadas", subtitle: "Única fuente de precios para propuestas. Un servicio sin tarifa vigente muestra “Precio pendiente de aprobación”.",
+      actions: (policy(ServiceRate).create? ? link_to("Registrar tarifa aprobada", new_admin_service_rate_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
+<% rates_by_service = @rates.group_by(&:service_id) %>
+<div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-slate-200 text-sm">
+      <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr><th class="px-4 py-3">Servicio</th><th class="px-4 py-3">País</th><th class="px-4 py-3">Modalidad</th><th class="px-4 py-3">Rango aprobado</th><th class="px-4 py-3 hidden md:table-cell">Vigencia</th><th class="px-4 py-3 hidden lg:table-cell">Aprobó</th><th class="px-4 py-3"></th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% @services.each do |service| %>
+          <% rates = rates_by_service.fetch(service.id, []) %>
+          <% if rates.empty? %>
+            <tr><td class="px-4 py-3 font-medium"><%= service.name %></td><td colspan="6" class="px-4 py-3 text-sm font-medium text-amber-700">Precio pendiente de aprobación</td></tr>
+          <% else %>
+            <% rates.each do |rate| %>
+              <tr>
+                <td class="px-4 py-3 font-medium"><%= service.name %></td>
+                <td class="px-4 py-3"><%= rate.country&.name || "General" %></td>
+                <td class="px-4 py-3"><%= ApplicationHelper::RATE_UNITS[rate.unit] %></td>
+                <td class="px-4 py-3 tabular-nums"><%= rate.min_amount %> – <%= rate.max_amount %></td>
+                <td class="px-4 py-3 hidden md:table-cell"><%= l(rate.valid_from, format: :short_es) %> → <%= rate.valid_until ? l(rate.valid_until, format: :short_es) : "sin vencimiento" %></td>
+                <td class="px-4 py-3 hidden lg:table-cell"><%= rate.approved_by.name %></td>
+                <td class="px-4 py-3 text-right"><% if policy(rate).update? %><%= link_to "Editar", edit_admin_service_rate_path(rate), class: "font-medium text-indigo-600 hover:underline" %><% end %></td>
+              </tr>
+            <% end %>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -29,3 +29,12 @@ band: high
 possible_duplicate_of: null
 recommendation: "Responder hoy en el hilo; pedir catálogo y plazos"
 ```
+
+## Carga en el CRM
+Para pegar en "Análisis de Claude" (captura rápida o ficha del prospecto), entregar además este JSON. El CRM lo guarda como propuesta pendiente y calcula la puntuación final al aceptarlo.
+```json
+{"services": ["ecommerce"], "country": "PY",
+ "criteria": [{"key": "explicit_intent", "points": 25, "basis": "verified", "justification": "..."}],
+ "recommended_action": "...", "draft_message": "borrador de eq-sales-copywriter"}
+```
+Claves de servicio y de criterio válidas: las del catálogo del CRM (ver `references/rubrica.md`).

@@ -11,3 +11,4 @@
 | 06 | [Fuentes y Facebook](06-fuentes-y-facebook.md) | Opciones reales por plataforma |
 | 07 | [Prueba de captación](07-prueba-de-captacion.md) | Procedimiento de las 10 oportunidades |
 | 08 | [Plan de implementación](08-plan-de-implementacion.md) | Fases, paralelismo, riesgos |
+| 09 | [Captura rápida](09-captura-rapida.md) | Procedimiento para registrar publicaciones encontradas a mano |

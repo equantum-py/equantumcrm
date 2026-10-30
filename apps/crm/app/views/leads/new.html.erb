@@ -1,0 +1,5 @@
+<% content_for :title, "Captura rápida" %>
+<%= render "shared/page_header", title: "Captura rápida", subtitle: "Pegá el enlace y el extracto de una publicación encontrada manualmente (Facebook, LinkedIn, freelance, web)." %>
+<div class="max-w-3xl rounded-lg bg-white p-6 ring-1 ring-slate-200">
+  <%= render "form", lead: @lead %>
+</div>

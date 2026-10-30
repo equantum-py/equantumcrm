@@ -1,0 +1,15 @@
+<%= form_with model: [:admin, user], class: "space-y-4" do |f| %>
+  <%= form_errors(user) %>
+  <div><%= f.label :name, "Nombre", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :name, required: true, class: ApplicationHelper::INPUT_CLASS %></div>
+  <div><%= f.label :email_address, "Correo", class: ApplicationHelper::LABEL_CLASS %><%= f.email_field :email_address, required: true, class: ApplicationHelper::INPUT_CLASS %></div>
+  <div><%= f.label :role_id, "Rol", class: ApplicationHelper::LABEL_CLASS %><%= f.select :role_id, Role.order(:id).pluck(:name, :id), {}, class: ApplicationHelper::INPUT_CLASS %></div>
+  <div>
+    <%= f.label :password, user.new_record? ? "Contraseña inicial (mínimo 12 caracteres)" : "Nueva contraseña (vacío = sin cambios)", class: ApplicationHelper::LABEL_CLASS %>
+    <%= f.password_field :password, required: user.new_record?, autocomplete: "new-password", maxlength: 72, class: ApplicationHelper::INPUT_CLASS %>
+  </div>
+  <label class="flex items-center gap-2 text-sm"><%= f.check_box :active, class: "rounded border-slate-300 text-indigo-600" %> Activo (al desactivar se cierran sus sesiones)</label>
+  <div class="flex gap-2">
+    <%= f.submit "Guardar", class: ApplicationHelper::BUTTON_PRIMARY %>
+    <%= link_to "Cancelar", admin_users_path, class: ApplicationHelper::BUTTON_SECONDARY %>
+  </div>
+<% end %>

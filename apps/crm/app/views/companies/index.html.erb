@@ -1,0 +1,29 @@
+<% content_for :title, "Empresas" %>
+<%= render "shared/page_header", title: "Empresas", actions: (policy(Company).create? ? link_to("Nueva empresa", new_company_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
+<%= form_with url: companies_path, method: :get, class: "mb-4 max-w-md" do |f| %>
+  <%= f.search_field :q, value: @query, placeholder: "Buscar por nombre o dominio…", class: ApplicationHelper::INPUT_CLASS, "aria-label": "Buscar empresas" %>
+<% end %>
+<% if @companies.any? %>
+  <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr><th class="px-4 py-3">Empresa</th><th class="px-4 py-3 hidden sm:table-cell">País</th><th class="px-4 py-3 hidden md:table-cell">Sitio web</th><th class="px-4 py-3 hidden md:table-cell">Responsable</th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% @companies.each do |company| %>
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3"><%= link_to company.trade_name, company, class: "font-medium hover:text-indigo-600" %><% if company.sector.present? %><p class="text-xs text-slate-500"><%= company.sector %></p><% end %></td>
+              <td class="px-4 py-3 hidden sm:table-cell"><%= company.country&.name || "—" %></td>
+              <td class="px-4 py-3 hidden md:table-cell"><%= company.normalized_domain || "—" %></td>
+              <td class="px-4 py-3 hidden md:table-cell"><%= company.owner&.name || "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% else %>
+  <%= render "shared/empty_state", title: "No hay empresas", body: "Se crean a mano o al convertir un prospecto en oportunidad.",
+        action: (policy(Company).create? ? link_to("Nueva empresa", new_company_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
+<% end %>

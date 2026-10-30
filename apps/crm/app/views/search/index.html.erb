@@ -1,0 +1,16 @@
+<% content_for :title, "Búsqueda" %>
+<%= render "shared/page_header", title: @query.present? ? "Resultados para “#{@query}”" : "Búsqueda" %>
+<% if @query.blank? %>
+  <p class="text-sm text-slate-500">Escribí en la barra superior para buscar.</p>
+<% else %>
+  <div class="grid gap-6 md:grid-cols-3">
+    <% [["Prospectos", @leads, :title], ["Empresas", @companies, :trade_name], ["Oportunidades", @opportunities, :name]].each do |title, records, attr| %>
+      <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+        <h2 class="text-sm font-semibold"><%= title %></h2>
+        <% if records.any? %>
+          <ul class="mt-2 space-y-1 text-sm"><% records.each do |r| %><li><%= link_to r.public_send(attr), r, class: "text-indigo-600 hover:underline" %></li><% end %></ul>
+        <% else %><p class="mt-2 text-sm text-slate-500">Sin resultados.</p><% end %>
+      </section>
+    <% end %>
+  </div>
+<% end %>

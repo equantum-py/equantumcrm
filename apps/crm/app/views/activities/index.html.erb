@@ -1,0 +1,10 @@
+<% content_for :title, "Actividades" %>
+<%= render "shared/page_header", title: "Mis pendientes", subtitle: "Llamadas, reuniones, tareas y seguimientos asignados a vos" %>
+<div class="grid gap-6 lg:grid-cols-2">
+  <% [["Vencidas", @overdue, "Nada vencido."], ["Hoy", @today, "Nada para hoy."], ["Próximas y sin fecha", @upcoming, "Sin pendientes próximos."], ["Completadas recientemente", @completed, "Todavía no completaste actividades."]].each do |title, list, empty| %>
+    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+      <h2 class="text-sm font-semibold <%= 'text-red-700' if title == 'Vencidas' && list.any? %>"><%= title %> <span class="text-slate-400 font-normal">(<%= list.size %>)</span></h2>
+      <%= render "activities/list", activities: list, empty: empty, show_subject: true %>
+    </section>
+  <% end %>
+</div>

@@ -1,0 +1,12 @@
+<h1 class="text-xl font-semibold">Nueva contraseña</h1>
+<%= form_with url: password_path(params[:token]), method: :put, class: "mt-6 space-y-4" do |form| %>
+  <div>
+    <%= form.label :password, "Contraseña (mínimo 12 caracteres)", class: ApplicationHelper::LABEL_CLASS %>
+    <%= form.password_field :password, required: true, autocomplete: "new-password", maxlength: 72, class: ApplicationHelper::INPUT_CLASS %>
+  </div>
+  <div>
+    <%= form.label :password_confirmation, "Repetir contraseña", class: ApplicationHelper::LABEL_CLASS %>
+    <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password", maxlength: 72, class: ApplicationHelper::INPUT_CLASS %>
+  </div>
+  <%= form.submit "Guardar", class: "#{ApplicationHelper::BUTTON_PRIMARY} w-full" %>
+<% end %>

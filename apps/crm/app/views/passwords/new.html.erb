@@ -1,0 +1,9 @@
+<h1 class="text-xl font-semibold">Restablecer contraseña</h1>
+<%= form_with url: passwords_path, class: "mt-6 space-y-4" do |form| %>
+  <div>
+    <%= form.label :email_address, "Correo", class: ApplicationHelper::LABEL_CLASS %>
+    <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", class: ApplicationHelper::INPUT_CLASS %>
+  </div>
+  <%= form.submit "Enviar instrucciones", class: "#{ApplicationHelper::BUTTON_PRIMARY} w-full" %>
+  <p class="text-center text-sm"><%= link_to "Volver", new_session_path, class: "text-indigo-600 hover:underline" %></p>
+<% end %>

@@ -1,0 +1,4 @@
+<label class="block">
+  <span class="sr-only"><%= label %></span>
+  <%= select_tag name, options_for_select(options, value), include_blank: label, class: "#{ApplicationHelper::INPUT_CLASS} min-w-36", onchange: "this.form.requestSubmit()" %>
+</label>

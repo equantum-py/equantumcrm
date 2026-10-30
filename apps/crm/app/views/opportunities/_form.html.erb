@@ -1,0 +1,28 @@
+<%= form_with model: opportunity, class: "space-y-6" do |f| %>
+  <%= form_errors(opportunity) %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="sm:col-span-2"><%= f.label :name, "Nombre", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :name, required: true, class: ApplicationHelper::INPUT_CLASS %><%= field_error(opportunity, :name) %></div>
+    <div><%= f.label :company_id, "Empresa", class: ApplicationHelper::LABEL_CLASS %><%= f.select :company_id, Company.ordered.pluck(:trade_name, :id), { include_blank: "Elegí una empresa" }, required: true, class: ApplicationHelper::INPUT_CLASS %><%= field_error(opportunity, :company) %></div>
+    <div><%= f.label :pipeline_stage_id, "Etapa", class: ApplicationHelper::LABEL_CLASS %><%= f.select :pipeline_stage_id, PipelineStage.ordered.pluck(:name, :id), {}, class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :lost_reason, "Motivo de pérdida (si corresponde)", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :lost_reason, class: ApplicationHelper::INPUT_CLASS %><%= field_error(opportunity, :lost_reason) %></div>
+    <div><%= f.label :country_id, "País", class: ApplicationHelper::LABEL_CLASS %><%= f.select :country_id, options_for_countries, { include_blank: "Sin definir" }, class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :currency, "Moneda", class: ApplicationHelper::LABEL_CLASS %><%= f.select :currency, ApplicationHelper::CURRENCIES, { include_blank: "—" }, class: ApplicationHelper::INPUT_CLASS %><%= field_error(opportunity, :currency) %></div>
+    <div><%= f.label :estimated_value, "Valor estimado", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :estimated_value, value: opportunity.estimated_value&.to_d&.to_s("F")&.delete_suffix(".0"), inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :expected_close_on, "Cierre esperado", class: ApplicationHelper::LABEL_CLASS %><%= f.date_field :expected_close_on, class: ApplicationHelper::INPUT_CLASS %></div>
+    <% if current_user.can?(:"pipeline.manage_all") %>
+      <div><%= f.label :owner_id, "Responsable", class: ApplicationHelper::LABEL_CLASS %><%= f.select :owner_id, options_for_users, {}, class: ApplicationHelper::INPUT_CLASS %></div>
+    <% end %>
+    <fieldset class="sm:col-span-2">
+      <legend class="<%= ApplicationHelper::LABEL_CLASS %>">Servicios</legend>
+      <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+        <%= f.collection_check_boxes :service_ids, Service.active.ordered, :id, :name do |b| %>
+          <label class="flex items-center gap-2 text-sm"><%= b.check_box(class: "rounded border-slate-300 text-indigo-600") %><%= b.text %></label>
+        <% end %>
+      </div>
+    </fieldset>
+  </div>
+  <div class="flex gap-2">
+    <%= f.submit opportunity.new_record? ? "Crear oportunidad" : "Guardar cambios", class: ApplicationHelper::BUTTON_PRIMARY %>
+    <%= link_to "Cancelar", opportunity.new_record? ? opportunities_path : opportunity, class: ApplicationHelper::BUTTON_SECONDARY %>
+  </div>
+<% end %>

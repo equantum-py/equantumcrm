@@ -1,0 +1,24 @@
+<%= form_with model: company, class: "space-y-6" do |f| %>
+  <%= form_errors(company) %>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div><%= f.label :trade_name, "Nombre comercial", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :trade_name, required: true, class: ApplicationHelper::INPUT_CLASS %><%= field_error(company, :trade_name) %></div>
+    <div><%= f.label :legal_name, "Razón social", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :legal_name, class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :sector, "Sector", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :sector, class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :country_id, "País", class: ApplicationHelper::LABEL_CLASS %><%= f.select :country_id, options_for_countries, { include_blank: "Sin definir" }, class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :website, "Sitio web", class: ApplicationHelper::LABEL_CLASS %><%= f.url_field :website, placeholder: "https://", class: ApplicationHelper::INPUT_CLASS %><%= field_error(company, :website) %><%= field_error(company, :normalized_domain) %></div>
+    <div><%= f.label :owner_id, "Responsable", class: ApplicationHelper::LABEL_CLASS %><%= f.select :owner_id, options_for_users, { include_blank: "Sin asignar" }, class: ApplicationHelper::INPUT_CLASS %></div>
+    <fieldset class="sm:col-span-2">
+      <legend class="<%= ApplicationHelper::LABEL_CLASS %>">Servicios de interés</legend>
+      <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+        <%= f.collection_check_boxes :service_ids, Service.active.ordered, :id, :name do |b| %>
+          <label class="flex items-center gap-2 text-sm"><%= b.check_box(class: "rounded border-slate-300 text-indigo-600") %><%= b.text %></label>
+        <% end %>
+      </div>
+    </fieldset>
+    <div class="sm:col-span-2"><%= f.label :notes, "Observaciones internas", class: ApplicationHelper::LABEL_CLASS %><%= f.text_area :notes, rows: 3, class: ApplicationHelper::INPUT_CLASS %></div>
+  </div>
+  <div class="flex gap-2">
+    <%= f.submit company.new_record? ? "Crear empresa" : "Guardar cambios", class: ApplicationHelper::BUTTON_PRIMARY %>
+    <%= link_to "Cancelar", company.new_record? ? companies_path : company, class: ApplicationHelper::BUTTON_SECONDARY %>
+  </div>
+<% end %>

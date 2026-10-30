@@ -1,0 +1,51 @@
+<% content_for :title, "Prospectos" %>
+<%= render "shared/page_header", title: "Prospectos", subtitle: "Oportunidades detectadas, ordenadas por puntuación",
+      actions: (policy(Lead).create? ? link_to("Captura rápida", new_lead_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
+
+<%= form_with url: leads_path, method: :get, class: "mb-4 grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7", data: { turbo_action: "advance" } do |f| %>
+  <%= f.search_field :q, value: @filters[:q], placeholder: "Buscar…", class: "#{ApplicationHelper::INPUT_CLASS} col-span-2 md:col-span-1", "aria-label": "Buscar prospectos" %>
+  <%= render "shared/filter_select", name: :status, label: "Todos los estados", options: ApplicationHelper::LEAD_STATUS.map { |k, (l, _)| [l, k] }, value: @filters[:status] %>
+  <%= render "shared/filter_select", name: :band, label: "Todas las bandas", options: ApplicationHelper::BANDS.map { |k, (l, _)| [l, k] }, value: @filters[:band] %>
+  <%= render "shared/filter_select", name: :country_id, label: "Todos los países", options: options_for_countries, value: @filters[:country_id] %>
+  <%= render "shared/filter_select", name: :service_id, label: "Todos los servicios", options: options_for_services, value: @filters[:service_id] %>
+  <%= render "shared/filter_select", name: :source_id, label: "Todas las fuentes", options: options_for_sources, value: @filters[:source_id] %>
+  <%= render "shared/filter_select", name: :owner_id, label: "Todos los responsables", options: options_for_users, value: @filters[:owner_id] %>
+<% end %>
+
+<% if @leads.any? %>
+  <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-4 py-3">Prospecto</th>
+            <th class="px-4 py-3">Puntuación</th>
+            <th class="px-4 py-3 hidden md:table-cell">Fuente</th>
+            <th class="px-4 py-3 hidden md:table-cell">País</th>
+            <th class="px-4 py-3 hidden lg:table-cell">Publicado</th>
+            <th class="px-4 py-3">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% @leads.each do |lead| %>
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 max-w-md">
+                <%= link_to lead.title, lead, class: "font-medium text-slate-900 hover:text-indigo-600" %>
+                <p class="truncate text-xs text-slate-500"><%= lead.services.map(&:name).join(", ").presence || "Servicio sin definir" %></p>
+              </td>
+              <td class="px-4 py-3"><%= score_badge(lead) %></td>
+              <td class="px-4 py-3 hidden md:table-cell"><%= lead.source.name %></td>
+              <td class="px-4 py-3 hidden md:table-cell"><%= lead.country&.name || "—" %></td>
+              <td class="px-4 py-3 hidden lg:table-cell"><%= lead.published_at ? date_label(lead.published_at) : "Sin fecha verificada" %></td>
+              <td class="px-4 py-3"><div class="flex flex-wrap gap-1"><%= lead_status_badge(lead.status) %><%= verification_badge(lead.verification_status) %></div></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% else %>
+  <%= render "shared/empty_state", title: "No hay prospectos con estos filtros",
+        body: "Registrá una publicación con la captura rápida: enlace y extracto alcanzan.",
+        action: (policy(Lead).create? ? link_to("Captura rápida", new_lead_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
+<% end %>
