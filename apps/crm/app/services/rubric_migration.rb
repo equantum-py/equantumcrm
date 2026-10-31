@@ -2,6 +2,8 @@
 # rescaled to the new maximum; criteria the target lacks are dropped (in v2,
 # urgency and budget move to the commercial priority). preview writes
 # nothing; activate! needs a named approver and runs in one transaction.
+# Old lead_scores rows are never deleted, and each lead's previous total is
+# kept in a rubric_rescored audit entry.
 class RubricMigration
   Row = Data.define(:lead, :old_score, :new_score, :new_band, :priority)
 
@@ -29,11 +31,15 @@ class RubricMigration
       RubricVersion.find_by!(status: "active").tap { |current| current.update!(status: "retired") }
       RubricVersion.find_by!(version: @to).update!(status: "active", activated_at: Time.current, approved_by: approved_by)
       Lead.find_each do |lead|
+        before = { "score" => lead.score, "score_band" => lead.score_band, "scoring_version" => lead.scoring_version }
         mapped_scores(lead).each do |m|
           lead.lead_scores.find_or_initialize_by(scoring_criterion: m[:criterion])
               .update!(points: m[:points], basis: m[:basis], justification: m[:justification], set_by: m[:set_by])
         end
         lead.recalculate_score!
+        AuditLog.record!(action: "rubric_rescored", auditable: lead, changeset: {
+          "from" => before, "to" => { "score" => lead.score, "score_band" => lead.score_band, "scoring_version" => lead.scoring_version }
+        })
       end
       AuditLog.record!(action: "rubric_activated", changeset: { "from" => @from, "to" => @to, "approved_by_id" => approved_by.id })
     end
