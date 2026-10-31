@@ -2,6 +2,8 @@
 <% open_lead = !%w[discarded converted].include?(@lead.status) %>
 <% can_update = policy(@lead).update? %>
 <% qualify_missing = qualify_blockers(@lead) %>
+<% priority_reasons = priority_pending_reasons(@lead, pending_analysis: @pending_analysis, duplicates: @duplicates) %>
+<% estimated_priority = @lead.commercial_priority.present? && priority_reasons.any? %>
 <% next_step = if @lead.verification_status != "verified" && open_lead then :verify
                elsif @lead.status != "qualified" && open_lead && qualify_missing.empty? then :qualify
                elsif @lead.convertible? then :convert
@@ -26,29 +28,33 @@
     <span class="text-slate-500"><%= @lead.source.name %>, detectado <%= date_label(@lead.detected_at) %></span>
   </p>
 
+  <%# Mobile order: budget, verification, priority, then next action and actions. %>
   <dl class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
     <div class="rounded-md bg-slate-50 p-3">
       <dt class="text-xs font-medium text-slate-500">Presupuesto publicado</dt>
       <dd class="mt-1 text-sm font-semibold tabular-nums"><%= lead_budget_label(@lead) %></dd>
     </div>
     <div class="rounded-md bg-slate-50 p-3">
-      <dt class="text-xs font-medium text-slate-500">Intención</dt>
-      <dd class="mt-1"><%= score_badge(@lead) %></dd>
+      <dt class="text-xs font-medium text-slate-500">Verificación</dt>
+      <dd class="mt-1 flex flex-wrap gap-1"><%= verification_badge(@lead.verification_status) %><%= lead_status_badge(@lead.status) %></dd>
     </div>
-    <div class="rounded-md bg-slate-50 p-3">
-      <dt class="text-xs font-medium text-slate-500">Prioridad comercial</dt>
+    <div class="col-span-2 rounded-md bg-slate-50 p-3 lg:col-span-1" id="lead-priority">
+      <dt class="text-xs font-medium text-slate-500"><%= estimated_priority ? "Prioridad estimada — pendiente de verificación" : "Prioridad comercial" %></dt>
       <dd class="mt-1">
         <% if @lead.commercial_priority %>
-          <%= badge(CommercialPriority::LABELS[@lead.commercial_priority].delete_prefix("Prioridad comercial ").capitalize, ApplicationHelper::PRIORITY_STYLES[@lead.commercial_priority]) %>
-          <span class="block text-xs text-slate-500">confianza <%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %></span>
+          <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <%= priority_badge(@lead.commercial_priority, estimated: estimated_priority) %>
+            <span class="text-xs text-slate-600">confianza del análisis <%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %></span>
+          </span>
+          <% if estimated_priority %><span class="mt-1 block text-xs text-amber-800">Falta: <%= priority_reasons.to_sentence %>.</span><% end %>
         <% else %>
           <span class="text-sm text-slate-500">Sin calcular</span>
         <% end %>
       </dd>
     </div>
-    <div class="rounded-md bg-slate-50 p-3">
-      <dt class="text-xs font-medium text-slate-500">Verificación</dt>
-      <dd class="mt-1 flex flex-wrap gap-1"><%= verification_badge(@lead.verification_status) %><%= lead_status_badge(@lead.status) %></dd>
+    <div class="hidden rounded-md bg-slate-50 p-3 lg:block">
+      <dt class="text-xs font-medium text-slate-500">Intención</dt>
+      <dd class="mt-1"><%= score_badge(@lead) %></dd>
     </div>
   </dl>
 
@@ -87,16 +93,16 @@
     <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="analysis-title">
       <h2 id="analysis-title" class="text-sm font-semibold">Análisis</h2>
 
-      <div class="mt-3 grid gap-3 sm:grid-cols-3">
-        <div class="rounded-md p-3 ring-1 <%= @pending_analysis ? "bg-amber-50 ring-amber-200" : "bg-slate-50 ring-slate-200" %>">
+      <div class="mt-3 grid gap-2 sm:grid-cols-3 sm:gap-3">
+        <div class="rounded-md px-3 py-2 ring-1 sm:p-3 <%= @pending_analysis ? "bg-amber-50 ring-amber-200" : "bg-slate-50 ring-slate-200" %>">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">1 · Propuesto</p>
           <p class="mt-1 text-sm"><%= @pending_analysis ? "#{analysis_points(@pending_analysis)} / 100 sin revisar" : "Nada pendiente" %></p>
         </div>
-        <div class="rounded-md bg-slate-50 p-3 ring-1 ring-slate-200">
+        <div class="rounded-md bg-slate-50 px-3 py-2 ring-1 ring-slate-200 sm:p-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">2 · Aprobado</p>
           <p class="mt-1 text-sm"><%= @accepted_analysis ? "Por #{@accepted_analysis.reviewed_by&.name || 'un usuario'}, #{date_label(@accepted_analysis.reviewed_at)}" : "Sin análisis aprobado" %></p>
         </div>
-        <div class="rounded-md bg-slate-50 p-3 ring-1 ring-slate-200">
+        <div class="rounded-md bg-slate-50 px-3 py-2 ring-1 ring-slate-200 sm:p-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">3 · Puntuación definitiva</p>
           <p class="mt-1 text-sm"><%= @lead.score ? "#{@lead.score} / 100 (calculada por el CRM)" : "Pendiente: faltan criterios" %></p>
         </div>
@@ -195,11 +201,14 @@
     <% if @lead.commercial_priority %>
       <% breakdown = @lead.priority_breakdown %>
       <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
-        <h2 class="text-sm font-semibold">Prioridad comercial</h2>
-        <p class="mt-2 inline-flex rounded-md px-2 py-1 text-sm font-semibold ring-1 <%= ApplicationHelper::PRIORITY_STYLES[@lead.commercial_priority] %>"><%= CommercialPriority::LABELS[@lead.commercial_priority] %></p>
+        <h2 class="text-sm font-semibold"><%= estimated_priority ? "Prioridad estimada — pendiente de verificación" : "Prioridad comercial" %></h2>
+        <p class="mt-2"><%= priority_badge(@lead.commercial_priority, estimated: estimated_priority) %></p>
+        <% if estimated_priority %>
+          <p class="mt-2 text-xs text-amber-800">Es el resultado del cálculo, sin cambios, pero todavía no es una clasificación aprobada. Falta: <%= priority_reasons.to_sentence %>.</p>
+        <% end %>
         <dl class="mt-3 space-y-1 text-sm">
           <div class="flex justify-between gap-3"><dt class="text-slate-500">Atractivo económico</dt><dd class="tabular-nums"><%= @lead.priority_score %> / 100</dd></div>
-          <div class="flex justify-between gap-3"><dt class="text-slate-500">Confianza</dt><dd class="tabular-nums"><%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %></dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Confianza del análisis</dt><dd class="tabular-nums"><%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %></dd></div>
           <div class="flex justify-between gap-3"><dt class="text-slate-500">Rentabilidad</dt><dd>Desconocida</dd></div>
         </dl>
         <% if breakdown["capped_by_confidence"] %><p class="mt-2 text-xs text-slate-500">Limitada a media por falta de datos.</p><% end %>
@@ -226,8 +235,8 @@
       </section>
     <% end %>
 
-    <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
-      <h2 class="text-sm font-semibold">Datos</h2>
+    <details class="group rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" data-controller="disclosure">
+      <summary class="flex cursor-pointer items-center justify-between text-sm font-semibold">Datos<span class="text-xs font-normal text-slate-500 group-open:hidden">Publicado, plazo, competencia, autor…</span></summary>
       <dl class="mt-3 space-y-2 text-sm">
         <% [["Publicado", @lead.published_at ? date_label(@lead.published_at) : "Sin fecha verificada"],
             ["Cierre para ofertar", @lead.deadline_at ? date_label(@lead.deadline_at) : nil],
@@ -239,7 +248,7 @@
           <div class="flex justify-between gap-3"><dt class="text-slate-500"><%= label %></dt><dd class="text-right"><%= value.presence || "—" %></dd></div>
         <% end %>
       </dl>
-    </section>
+    </details>
 
     <% if can_update && open_lead %>
       <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">

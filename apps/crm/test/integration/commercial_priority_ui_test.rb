@@ -35,7 +35,8 @@ class CommercialPriorityUiTest < ActionDispatch::IntegrationTest
     RubricMigration.new(from: 1, to: 2).activate!(approved_by: @admin)
     patch lead_path(lead), params: { lead: { urgency: "medium" } }
     get lead_path(lead)
-    assert_select "h2", text: "Prioridad comercial"
+    # Unverified and unscored, so it is shown as an estimate.
+    assert_select "h2", text: "Prioridad estimada — pendiente de verificación"
     assert_match "Sin datos (fuera del cálculo)", response.body
   end
 

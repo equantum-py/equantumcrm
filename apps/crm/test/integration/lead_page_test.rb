@@ -16,6 +16,7 @@ class LeadPageTest < ActionDispatch::IntegrationTest
     assert_select "dd", text: "EUR 250,00 – EUR 750,00"
     assert_select "dt", text: "Intención"
     assert_select "dt", text: "Prioridad comercial"
+    assert_select "#lead-priority dd", text: "Sin calcular"
     assert_select "p", text: "Responder en el hilo"
     assert_select "nav[aria-label='Acciones comerciales']" do
       assert_select "a[href='https://example.com/demo/1'][rel~=noopener]", text: "Ver fuente ↗"
@@ -57,5 +58,48 @@ class LeadPageTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "nav[aria-label='Acciones comerciales'] button", count: 0
     assert_select "summary", text: "Descartar prospecto", count: 0
+  end
+
+  test "a priority on an unverified or unscored lead reads as an estimate, not an approval" do
+    @lead.update_columns(commercial_priority: "high", priority_score: 71, priority_confidence: 0.7,
+                         priority_breakdown: { "factors" => [], "excluded" => [], "profitability" => { "missing" => [] } })
+    sign_in create_user(role: "sales")
+    get lead_path(@lead)
+    assert_select "#lead-priority dt", text: "Prioridad estimada — pendiente de verificación"
+    assert_select "#lead-priority span", text: "Alta · estimada"
+    assert_select "#lead-priority", text: /confianza del análisis 70%/
+    assert_select "#lead-priority", text: /Falta: fuente sin verificar y intención sin puntuar/
+    assert_select "span", text: "Alta", count: 0
+
+    get leads_path
+    assert_select "td span", text: "Alta · estimada"
+  end
+
+  test "a pending AI analysis or a possible duplicate keeps the priority as an estimate" do
+    @lead.update!(verification_status: "verified", author_display_name: "Autor sintético")
+    score_all!(@lead)
+    @lead.update_columns(commercial_priority: "high", priority_score: 71, priority_confidence: 0.7)
+    sign_in create_user(role: "sales")
+
+    get lead_path(@lead)
+    assert_select "#lead-priority dt", text: "Prioridad comercial"
+    assert_select "#lead-priority span", text: "Alta"
+
+    @lead.ai_analyses.create!(kind: "scoring_proposal", provider: "prospect_ai:test", output: { "criteria" => [] })
+    get lead_path(@lead)
+    assert_select "#lead-priority", text: /Falta: análisis de IA sin aprobar/
+
+    @lead.ai_analyses.update_all(status: "rejected")
+    create_lead(title: "Otra publicación", author_display_name: "Autor sintético")
+    get lead_path(@lead)
+    assert_select "#lead-priority", text: /Falta: posible duplicado/
+  end
+
+  test "the algorithm result is untouched by the estimate label" do
+    @lead.update_columns(commercial_priority: "high", priority_score: 71, priority_confidence: 0.7)
+    sign_in create_user(role: "sales")
+    assert_no_changes -> { @lead.reload.attributes.slice("commercial_priority", "priority_score", "priority_confidence") } do
+      get lead_path(@lead)
+    end
   end
 end

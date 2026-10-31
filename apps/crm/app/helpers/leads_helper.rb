@@ -36,6 +36,30 @@ module LeadsHelper
     end
   end
 
+  # Why a computed priority is still only an estimate. The algorithm's result
+  # is shown unchanged; this only decides how it is labelled.
+  def priority_pending_reasons(lead, pending_analysis: nil, duplicates: [])
+    reasons = []
+    reasons << "fuente sin verificar" unless lead.verification_status == "verified"
+    reasons << "intención sin puntuar" unless lead.score
+    reasons << "análisis de IA sin aprobar" if pending_analysis
+    reasons << "posible duplicado" if duplicates.any?
+    reasons
+  end
+
+  def priority_short_label(priority)
+    CommercialPriority::LABELS[priority].delete_prefix("Prioridad comercial ").capitalize
+  end
+
+  # An estimate keeps the class colour but gets a dashed border and the word
+  # "estimada", so it never reads as an approved classification.
+  def priority_badge(priority, estimated:)
+    label = estimated ? "#{priority_short_label(priority)} · estimada" : priority_short_label(priority)
+    style = ApplicationHelper::PRIORITY_STYLES[priority]
+    outline = estimated ? "border border-dashed border-slate-400" : "ring-1"
+    tag.span(label, class: "inline-block w-fit rounded px-1.5 py-0.5 text-xs font-medium #{style} #{outline}")
+  end
+
   def qualify_blockers(lead)
     reasons = []
     reasons << "verificar la fuente" unless lead.verification_status == "verified"
