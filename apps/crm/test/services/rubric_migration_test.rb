@@ -41,6 +41,18 @@ class RubricMigrationTest < ActiveSupport::TestCase
     assert AuditLog.exists?(action: "rubric_activated")
   end
 
+  test "activation keeps the previous scores traceable" do
+    unscored = create_lead
+    v1_rows = LeadScore.joins(:scoring_criterion).where(scoring_criteria: { version: 1 }).count
+    RubricMigration.new(from: 1, to: 2).activate!(approved_by: @admin)
+
+    assert_equal v1_rows, LeadScore.joins(:scoring_criterion).where(scoring_criteria: { version: 1 }).count
+    entry = AuditLog.find_by!(action: "rubric_rescored", auditable: @lead)
+    assert_equal({ "score" => 100, "score_band" => @lead.score_band, "scoring_version" => 1 }, entry.changeset["from"])
+    assert_equal 2, entry.changeset.dig("to", "scoring_version")
+    assert_nil AuditLog.find_by!(action: "rubric_rescored", auditable: unscored).changeset.dig("from", "score")
+  end
+
   test "activation requires an approver" do
     assert_raises(ArgumentError) { RubricMigration.new(from: 1, to: 2).activate!(approved_by: nil) }
     assert_equal 1, RubricVersion.active_version
