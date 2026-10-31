@@ -1,110 +1,196 @@
 <% content_for :title, @lead.title %>
-<div class="mb-6">
-  <p class="text-sm"><%= link_to "← Prospectos", leads_path, class: "text-slate-500 hover:text-slate-700" %></p>
-  <div class="mt-2 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-    <div class="min-w-0">
-      <h1 class="text-2xl font-semibold tracking-tight"><%= @lead.title %></h1>
-      <div class="mt-2 flex flex-wrap items-center gap-2">
-        <%= score_badge(@lead) %><%= lead_status_badge(@lead.status) %><%= verification_badge(@lead.verification_status) %>
-        <span class="text-xs text-slate-500"><%= @lead.source.name %> · detectado <%= date_label(@lead.detected_at) %></span>
-      </div>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <% if policy(@lead).update? %>
-        <%= link_to "Editar", edit_lead_path(@lead), class: ApplicationHelper::BUTTON_SECONDARY %>
-        <%= link_to "Puntuar", edit_lead_score_path(@lead), class: ApplicationHelper::BUTTON_SECONDARY %>
-        <% if @lead.status != "qualified" && @lead.status != "converted" && @lead.status != "discarded" %>
-          <%= button_to "Calificar", qualify_lead_path(@lead), method: :patch, class: ApplicationHelper::BUTTON_SECONDARY, disabled: !(@lead.verification_status == "verified" && @lead.score_complete?), title: "Requiere fuente verificada y puntuación completa" %>
-        <% end %>
-      <% end %>
-      <% if @lead.convertible? && policy(@lead).convert? %>
-        <%= button_to "Convertir en oportunidad", convert_lead_path(@lead), class: ApplicationHelper::BUTTON_PRIMARY %>
-      <% end %>
-      <% if @lead.opportunity %>
-        <%= link_to "Ver oportunidad", @lead.opportunity, class: ApplicationHelper::BUTTON_PRIMARY %>
-      <% end %>
-    </div>
+<% open_lead = !%w[discarded converted].include?(@lead.status) %>
+<% can_update = policy(@lead).update? %>
+<% qualify_missing = qualify_blockers(@lead) %>
+<% priority_reasons = priority_pending_reasons(@lead, pending_analysis: @pending_analysis, duplicates: @duplicates) %>
+<% estimated_priority = @lead.commercial_priority.present? && priority_reasons.any? %>
+<% next_step = if @lead.verification_status != "verified" && open_lead then :verify
+               elsif @lead.status != "qualified" && open_lead && qualify_missing.empty? then :qualify
+               elsif @lead.convertible? then :convert
+               end %>
+<% button_for = ->(step) { step == next_step ? ApplicationHelper::BUTTON_PRIMARY : ApplicationHelper::BUTTON_SECONDARY } %>
+
+<section class="mb-6 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="lead-title">
+  <div class="flex items-center justify-between gap-3 text-sm">
+    <%= link_to "← Prospectos", leads_path, class: "text-slate-500 hover:text-slate-700" %>
+    <% if can_update %>
+      <span class="flex gap-3">
+        <%= link_to "Editar", edit_lead_path(@lead), class: "font-medium text-slate-600 hover:text-slate-900" %>
+        <% if policy(@lead).score? %><%= link_to "Puntuar", edit_lead_score_path(@lead), class: "font-medium text-slate-600 hover:text-slate-900" %><% end %>
+      </span>
+    <% end %>
   </div>
-</div>
+
+  <h1 id="lead-title" class="mt-2 text-xl font-semibold leading-snug tracking-tight sm:text-2xl"><%= @lead.title %></h1>
+  <p class="mt-1 text-sm text-slate-600">
+    <%= @lead.services.map(&:name).join(", ").presence || "Servicio sin definir" %> ·
+    <%= @lead.country&.name || "País sin confirmar" %> ·
+    <span class="text-slate-500"><%= @lead.source.name %>, detectado <%= date_label(@lead.detected_at) %></span>
+  </p>
+
+  <%# Mobile order: budget, verification, priority, then next action and actions. %>
+  <dl class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="rounded-md bg-slate-50 p-3">
+      <dt class="text-xs font-medium text-slate-500">Presupuesto publicado</dt>
+      <dd class="mt-1 text-sm font-semibold tabular-nums"><%= lead_budget_label(@lead) %></dd>
+    </div>
+    <div class="rounded-md bg-slate-50 p-3">
+      <dt class="text-xs font-medium text-slate-500">Verificación</dt>
+      <dd class="mt-1 flex flex-wrap gap-1"><%= verification_badge(@lead.verification_status) %><%= lead_status_badge(@lead.status) %></dd>
+    </div>
+    <div class="col-span-2 rounded-md bg-slate-50 p-3 lg:col-span-1" id="lead-priority">
+      <dt class="text-xs font-medium text-slate-500"><%= estimated_priority ? "Prioridad estimada — pendiente de verificación" : "Prioridad comercial" %></dt>
+      <dd class="mt-1">
+        <% if @lead.commercial_priority %>
+          <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <%= priority_badge(@lead.commercial_priority, estimated: estimated_priority) %>
+            <span class="text-xs text-slate-600">confianza del análisis <%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %></span>
+          </span>
+          <% if estimated_priority %><span class="mt-1 block text-xs text-amber-800">Falta: <%= priority_reasons.to_sentence %>.</span><% end %>
+        <% else %>
+          <span class="text-sm text-slate-500">Sin calcular</span>
+        <% end %>
+      </dd>
+    </div>
+    <div class="hidden rounded-md bg-slate-50 p-3 lg:block">
+      <dt class="text-xs font-medium text-slate-500">Intención</dt>
+      <dd class="mt-1"><%= score_badge(@lead) %></dd>
+    </div>
+  </dl>
+
+  <div class="mt-3 rounded-md border border-indigo-100 bg-indigo-50/60 p-3">
+    <p class="text-xs font-medium text-indigo-700">Próxima acción</p>
+    <p class="mt-0.5 text-sm text-slate-800"><%= @lead.recommended_action.presence || "Sin acción registrada. Revisá la fuente y el análisis." %></p>
+  </div>
+
+  <nav class="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" aria-label="Acciones comerciales">
+    <% if UrlCanonicalizer.http_url?(@lead.original_url) %>
+      <%= external_link "Ver fuente ↗", @lead.original_url, class: ApplicationHelper::BUTTON_SECONDARY %>
+    <% end %>
+    <% if can_update && open_lead && @lead.verification_status != "verified" %>
+      <%= button_to "Verificar", verify_lead_path(@lead), method: :patch, class: "#{button_for.(:verify)} w-full sm:w-auto", form_class: "contents" %>
+    <% end %>
+    <% if can_update && open_lead && @lead.status != "qualified" %>
+      <%= button_to "Calificar", qualify_lead_path(@lead), method: :patch, class: "#{button_for.(:qualify)} w-full sm:w-auto disabled:cursor-not-allowed disabled:opacity-50", form_class: "contents",
+            disabled: qualify_missing.any?, title: (qualify_missing.any? ? "Falta #{qualify_missing.to_sentence}" : nil) %>
+    <% end %>
+    <% if @lead.convertible? && policy(@lead).convert? %>
+      <%= button_to "Convertir en oportunidad", convert_lead_path(@lead), class: "#{button_for.(:convert)} w-full sm:w-auto", form_class: "contents" %>
+    <% end %>
+    <% if @lead.opportunity %>
+      <%= link_to "Ver oportunidad", @lead.opportunity, class: ApplicationHelper::BUTTON_PRIMARY %>
+    <% end %>
+    <% if policy(Activity).create? %><a href="#actividades" class="<%= ApplicationHelper::BUTTON_SECONDARY %>">Crear actividad</a><% end %>
+    <a href="#contacto" class="<%= ApplicationHelper::BUTTON_SECONDARY %>">Preparar contacto</a>
+  </nav>
+  <% if can_update && open_lead && @lead.status != "qualified" && qualify_missing.any? %>
+    <p class="mt-2 text-xs text-slate-500">Para calificar falta <%= qualify_missing.to_sentence %>.</p>
+  <% end %>
+</section>
 
 <div class="grid gap-6 lg:grid-cols-3">
   <div class="space-y-6 lg:col-span-2">
-    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-      <h2 class="text-sm font-semibold">Necesidad y evidencia</h2>
-      <% if @lead.need_summary.present? %><p class="mt-2 whitespace-pre-line text-sm text-slate-700"><%= @lead.need_summary %></p><% end %>
-      <% @lead.lead_evidences.each do |evidence| %>
-        <blockquote class="mt-3 border-l-4 border-indigo-200 bg-slate-50 px-4 py-2 text-sm italic text-slate-700"><%= evidence.excerpt %>
-          <footer class="mt-1 text-xs not-italic text-slate-500">Capturado <%= datetime_label(evidence.captured_at) %><%= " por #{evidence.captured_by.name}" if evidence.captured_by %></footer>
-        </blockquote>
-      <% end %>
-      <% if @lead.original_url.present? %>
-        <p class="mt-3 text-sm"><%= external_link "Abrir publicación original ↗", @lead.original_url, class: "font-medium text-indigo-600 hover:underline" %></p>
-      <% end %>
-    </section>
+    <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="analysis-title">
+      <h2 id="analysis-title" class="text-sm font-semibold">Análisis</h2>
 
-    <% if @pending_analysis %>
-      <section class="rounded-lg bg-amber-50 p-5 ring-1 ring-amber-200">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-sm font-semibold text-amber-900">Análisis propuesto pendiente de revisión</h2>
-          <% if policy(@lead).review_analysis? %>
-            <div class="flex gap-2">
-              <%= button_to "Aceptar", accept_lead_analysis_path(@lead, @pending_analysis), method: :patch, class: ApplicationHelper::BUTTON_PRIMARY %>
-              <%= button_to "Rechazar", reject_lead_analysis_path(@lead, @pending_analysis), method: :patch, class: ApplicationHelper::BUTTON_SECONDARY %>
-            </div>
-          <% end %>
+      <div class="mt-3 grid gap-2 sm:grid-cols-3 sm:gap-3">
+        <div class="rounded-md px-3 py-2 ring-1 sm:p-3 <%= @pending_analysis ? "bg-amber-50 ring-amber-200" : "bg-slate-50 ring-slate-200" %>">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">1 · Propuesto</p>
+          <p class="mt-1 text-sm"><%= @pending_analysis ? "#{analysis_points(@pending_analysis)} / 100 sin revisar" : "Nada pendiente" %></p>
         </div>
-        <p class="mt-1 text-xs text-amber-800">Origen: <%= @pending_analysis.provider %>. Al aceptar se copian los criterios y se recalcula la puntuación en el CRM.</p>
-        <dl class="mt-3 grid gap-1 text-sm">
-          <div><dt class="inline font-medium">Servicios:</dt> <dd class="inline"><%= Service.where(key: @pending_analysis.service_keys).pluck(:name).join(", ").presence || "—" %></dd></div>
-          <div><dt class="inline font-medium">Puntos propuestos:</dt> <dd class="inline"><%= @pending_analysis.criteria.sum { |c| c["points"].to_i } %> / 100</dd></div>
-        </dl>
-        <ul class="mt-2 space-y-1 text-sm">
-          <% @pending_analysis.criteria.each do |c| %>
-            <li><span class="font-medium"><%= c["key"] %></span>: <%= c["points"] %> (<%= c["basis"] == "verified" ? "verificado" : "inferido" %>) — <%= c["justification"] %></li>
-          <% end %>
-        </ul>
-        <% Array(@pending_analysis.output["warnings"]).each do |w| %><p class="mt-1 text-xs text-amber-800">⚠ <%= w %></p><% end %>
-      </section>
-    <% end %>
-
-    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-      <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold">Desglose de puntuación</h2>
-        <% if policy(@lead).score? %><%= link_to "Editar puntuación", edit_lead_score_path(@lead), class: "text-sm font-medium text-indigo-600 hover:underline" %><% end %>
+        <div class="rounded-md bg-slate-50 px-3 py-2 ring-1 ring-slate-200 sm:p-3">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">2 · Aprobado</p>
+          <p class="mt-1 text-sm"><%= @accepted_analysis ? "Por #{@accepted_analysis.reviewed_by&.name || 'un usuario'}, #{date_label(@accepted_analysis.reviewed_at)}" : "Sin análisis aprobado" %></p>
+        </div>
+        <div class="rounded-md bg-slate-50 px-3 py-2 ring-1 ring-slate-200 sm:p-3">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">3 · Puntuación definitiva</p>
+          <p class="mt-1 text-sm"><%= @lead.score ? "#{@lead.score} / 100 (calculada por el CRM)" : "Pendiente: faltan criterios" %></p>
+        </div>
       </div>
-      <table class="mt-3 w-full text-sm">
-        <tbody class="divide-y divide-slate-100">
-          <% @criteria.each do |criterion| %>
-            <% score = @scores[criterion.id] %>
-            <tr>
-              <td class="py-2 pr-3"><%= criterion.name %>
-                <% if score&.justification.present? %><p class="text-xs text-slate-500"><%= score.justification %></p><% end %>
-              </td>
-              <td class="py-2 pr-3 text-xs text-slate-500"><%= score ? (score.basis == "verified" ? "Verificado" : "Inferido") : "" %></td>
-              <td class="py-2 text-right tabular-nums font-medium"><%= score ? score.points : "—" %> / <%= criterion.max_points %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-      <p class="mt-3 text-xs text-slate-500">La puntuación final la calcula el CRM cuando los 8 criterios están completos.</p>
+
+      <% if @pending_analysis %>
+        <div class="mt-4 rounded-md bg-amber-50 p-4 ring-1 ring-amber-200">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-amber-900">Propuesta de <%= @pending_analysis.provider.start_with?("prospect_ai") ? "Prospect AI" : "una Skill de Claude" %></p>
+              <p class="mt-1 text-sm text-slate-800"><%= analysis_summary(@pending_analysis) %></p>
+              <p class="mt-1 text-xs text-amber-800">No cambia nada hasta que alguien la acepte.</p>
+            </div>
+            <% if policy(@lead).review_analysis? %>
+              <div class="grid shrink-0 grid-cols-2 gap-2">
+                <%= button_to "Aceptar", accept_lead_analysis_path(@lead, @pending_analysis), method: :patch, class: "#{ApplicationHelper::BUTTON_PRIMARY} w-full", form_class: "contents" %>
+                <%= button_to "Rechazar", reject_lead_analysis_path(@lead, @pending_analysis), method: :patch, class: "#{ApplicationHelper::BUTTON_SECONDARY} w-full", form_class: "contents" %>
+              </div>
+            <% end %>
+          </div>
+          <details class="mt-3 group">
+            <summary class="cursor-pointer text-sm font-medium text-amber-900">Ver criterios propuestos y advertencias</summary>
+            <table class="mt-2 w-full text-sm">
+              <tbody class="divide-y divide-amber-100">
+                <% @pending_analysis.criteria.each do |c| %>
+                  <tr>
+                    <td class="py-1.5 pr-3"><%= criterion_name(c["key"]) %><p class="text-xs text-slate-600"><%= c["justification"] %></p></td>
+                    <td class="py-1.5 pr-3 text-xs text-slate-500"><%= basis_label(c["basis"]) %></td>
+                    <td class="py-1.5 text-right tabular-nums"><%= c["points"] %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+            <% Array(@pending_analysis.output["warnings"]).each do |w| %><p class="mt-1 text-xs text-amber-800">⚠ <%= w %></p><% end %>
+          </details>
+        </div>
+      <% end %>
+
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-slate-700">Ver puntuación definitiva por criterio</summary>
+        <table class="mt-2 w-full text-sm">
+          <tbody class="divide-y divide-slate-100">
+            <% @criteria.each do |criterion| %>
+              <% score = @scores[criterion.id] %>
+              <tr>
+                <td class="py-1.5 pr-3"><%= criterion.name %><% if score&.justification.present? %><p class="text-xs text-slate-500"><%= score.justification %></p><% end %></td>
+                <td class="py-1.5 pr-3 text-xs text-slate-500"><%= score ? basis_label(score.basis) : "" %></td>
+                <td class="py-1.5 text-right tabular-nums font-medium"><%= score ? score.points : "—" %> / <%= criterion.max_points %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        <p class="mt-2 text-xs text-slate-500">El CRM calcula la puntuación cuando todos los criterios de la rúbrica vigente están completos.</p>
+      </details>
     </section>
 
-    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-      <h2 class="text-sm font-semibold">Siguiente acción</h2>
-      <p class="mt-2 text-sm"><%= @lead.recommended_action.presence || "Sin recomendación registrada." %></p>
+    <section id="contacto" class="scroll-mt-6 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="contact-title">
+      <h2 id="contact-title" class="text-sm font-semibold">Preparar contacto</h2>
       <% if @lead.suggested_message.present? %>
-        <div class="mt-4" data-controller="clipboard">
+        <div class="mt-3" data-controller="clipboard">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mensaje sugerido (borrador)</h3>
-            <button type="button" data-action="clipboard#copy" class="text-xs font-medium text-indigo-600 hover:underline">Copiar</button>
+            <p class="text-xs font-medium text-slate-500">Borrador sugerido<%= " · canal: #{@lead.contact_channel_kind.humanize.downcase}" if @lead.contact_channel_kind %></p>
+            <button type="button" data-action="clipboard#copy" class="text-sm font-medium text-indigo-600 hover:underline">Copiar</button>
           </div>
-          <p data-clipboard-target="source" class="mt-2 whitespace-pre-line rounded-md bg-slate-50 p-3 text-sm"><%= @lead.suggested_message %></p>
-          <p class="mt-1 text-xs text-slate-500">El CRM no envía mensajes. Revisalo y envialo manualmente si corresponde.</p>
+          <p data-clipboard-target="source" class="mt-2 whitespace-pre-line rounded-md bg-slate-50 p-3 text-sm leading-relaxed"><%= @lead.suggested_message %></p>
         </div>
+      <% else %>
+        <p class="mt-2 text-sm text-slate-600">Todavía no hay borrador. Aparece al aceptar un análisis, o podés escribirlo en Editar.</p>
+      <% end %>
+      <p class="mt-2 text-xs text-slate-500">El CRM no envía mensajes. Revisalo, envialo a mano por el canal de la publicación y registrá el contacto como actividad.</p>
+    </section>
+
+    <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+      <h2 class="text-sm font-semibold">Necesidad publicada</h2>
+      <% if @lead.need_summary.present? %><p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700"><%= @lead.need_summary %></p><% end %>
+      <% if @lead.lead_evidences.any? %>
+        <details class="mt-3">
+          <summary class="cursor-pointer text-sm font-medium text-slate-700">Evidencia capturada (<%= @lead.lead_evidences.size %>)</summary>
+          <% @lead.lead_evidences.each do |evidence| %>
+            <blockquote class="mt-2 border-l-4 border-indigo-200 bg-slate-50 px-4 py-2 text-sm italic text-slate-700"><%= evidence.excerpt %>
+              <footer class="mt-1 text-xs not-italic text-slate-500">Capturado <%= datetime_label(evidence.captured_at) %><%= " por #{evidence.captured_by.name}" if evidence.captured_by %></footer>
+            </blockquote>
+          <% end %>
+        </details>
       <% end %>
     </section>
 
-    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+    <section id="actividades" class="scroll-mt-6 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
       <h2 class="mb-3 text-sm font-semibold">Actividades</h2>
       <%= render "activities/form", subject: @lead %>
       <%= render "activities/list", activities: @activities %>
@@ -112,74 +198,89 @@
   </div>
 
   <aside class="space-y-6">
-    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-      <h2 class="text-sm font-semibold">Datos</h2>
-      <dl class="mt-3 space-y-2 text-sm">
-        <% [["País", @lead.country&.name], ["Servicios", @lead.services.map(&:name).join(", ").presence], ["Publicado", @lead.published_at ? date_label(@lead.published_at) : "Sin fecha verificada"],
-            ["Urgencia", ApplicationHelper::URGENCIES[@lead.urgency]], ["Presupuesto publicado", @lead.published_budget_text.presence || "No publicado"],
-            ["Presupuesto registrado", @lead.budget_currency ? "#{@lead.budget_min_amount} – #{@lead.budget_max_amount}" : nil], ["Propuestas visibles", @lead.competition_count],
-            ["Cierre para ofertar", @lead.deadline_at ? date_label(@lead.deadline_at) : nil],
-            ["Autor", @lead.author_display_name], ["Empresa", @lead.company ? link_to(@lead.company.trade_name, @lead.company) : nil],
-            ["Responsable", @lead.owner&.name], ["Origen del registro", @lead.created_via]].each do |label, value| %>
-          <div class="flex justify-between gap-3"><dt class="text-slate-500"><%= label %></dt><dd class="text-right"><%= value.presence || "—" %></dd></div>
-        <% end %>
-      </dl>
-    </section>
-
     <% if @lead.commercial_priority %>
       <% breakdown = @lead.priority_breakdown %>
-      <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-        <h2 class="text-sm font-semibold">Prioridad comercial</h2>
-        <p class="mt-2 inline-flex rounded-md px-2 py-1 text-sm font-semibold ring-1 <%= ApplicationHelper::PRIORITY_STYLES[@lead.commercial_priority] %>"><%= CommercialPriority::LABELS[@lead.commercial_priority] %></p>
-        <p class="mt-2 text-xs text-slate-500">Atractivo económico <%= @lead.priority_score %> / 100 · confianza <%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %><%= " · limitada a media por datos insuficientes" if breakdown["capped_by_confidence"] %></p>
-        <p class="mt-1 text-xs text-slate-500">Rentabilidad: desconocida (falta <%= Array(breakdown.dig("profitability", "missing")).to_sentence %>)</p>
+      <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+        <h2 class="text-sm font-semibold"><%= estimated_priority ? "Prioridad estimada — pendiente de verificación" : "Prioridad comercial" %></h2>
+        <p class="mt-2"><%= priority_badge(@lead.commercial_priority, estimated: estimated_priority) %></p>
+        <% if estimated_priority %>
+          <p class="mt-2 text-xs text-amber-800">Es el resultado del cálculo, sin cambios, pero todavía no es una clasificación aprobada. Falta: <%= priority_reasons.to_sentence %>.</p>
+        <% end %>
+        <dl class="mt-3 space-y-1 text-sm">
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Atractivo económico</dt><dd class="tabular-nums"><%= @lead.priority_score %> / 100</dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Confianza del análisis</dt><dd class="tabular-nums"><%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %></dd></div>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500">Rentabilidad</dt><dd>Desconocida</dd></div>
+        </dl>
+        <% if breakdown["capped_by_confidence"] %><p class="mt-2 text-xs text-slate-500">Limitada a media por falta de datos.</p><% end %>
         <% if breakdown["blockers"].present? %>
           <ul class="mt-3 space-y-1 text-sm text-rose-800"><% breakdown["blockers"].each do |reason| %><li>• <%= reason %></li><% end %></ul>
         <% end %>
         <% if breakdown["alerts"].present? %>
           <ul class="mt-3 space-y-1 text-sm text-amber-800"><% breakdown["alerts"].each do |alert| %><li>• <%= alert %></li><% end %></ul>
         <% end %>
-        <dl class="mt-3 space-y-2 text-sm">
-          <% Array(breakdown["factors"]).each do |factor| %>
-            <div><div class="flex justify-between gap-3"><dt class="text-slate-500"><%= ApplicationHelper::PRIORITY_FACTORS[factor["key"]] %></dt><dd class="tabular-nums"><%= factor["points"] %> / <%= factor["weight"] %></dd></div>
-              <p class="text-xs text-slate-500"><%= factor["note"] %></p></div>
+        <details class="mt-3">
+          <summary class="cursor-pointer text-sm font-medium text-slate-700">Ver cómo se calculó</summary>
+          <dl class="mt-2 space-y-2 text-sm">
+            <% Array(breakdown["factors"]).each do |factor| %>
+              <div><div class="flex justify-between gap-3"><dt class="text-slate-500"><%= ApplicationHelper::PRIORITY_FACTORS[factor["key"]] %></dt><dd class="tabular-nums"><%= factor["points"] %> / <%= factor["weight"] %></dd></div>
+                <p class="text-xs text-slate-500"><%= factor["note"] %></p></div>
+            <% end %>
+          </dl>
+          <% if breakdown["excluded"].present? %>
+            <p class="mt-3 text-xs font-semibold text-slate-500">Sin datos (fuera del cálculo)</p>
+            <ul class="mt-1 space-y-1 text-xs text-slate-500"><% breakdown["excluded"].each do |item| %><li><%= ApplicationHelper::PRIORITY_FACTORS[item["key"]] %>: <%= item["reason"] %></li><% end %></ul>
           <% end %>
-        </dl>
-        <% if breakdown["excluded"].present? %>
-          <p class="mt-3 text-xs font-semibold text-slate-500">Sin datos (fuera del cálculo)</p>
-          <ul class="mt-1 space-y-1 text-xs text-slate-500"><% breakdown["excluded"].each do |item| %><li><%= ApplicationHelper::PRIORITY_FACTORS[item["key"]] %>: <%= item["reason"] %></li><% end %></ul>
-        <% end %>
+          <p class="mt-2 text-xs text-slate-500">Rentabilidad desconocida: falta <%= Array(breakdown.dig("profitability", "missing")).to_sentence %>.</p>
+        </details>
       </section>
     <% end %>
 
-    <% if policy(@lead).update? && !%w[discarded converted].include?(@lead.status) %>
-      <section class="space-y-3 rounded-lg bg-white p-5 ring-1 ring-slate-200">
-        <h2 class="text-sm font-semibold">Verificación</h2>
-        <p class="text-xs text-slate-500">Abrí la fuente y confirmá que el texto y la fecha coinciden.</p>
-        <div class="flex flex-wrap gap-2">
-          <%= button_to "Fuente verificada", verify_lead_path(@lead), method: :patch, class: ApplicationHelper::BUTTON_SECONDARY %>
-          <%= button_to "No se pudo abrir", verify_lead_path(@lead, result: "unreachable"), method: :patch, class: ApplicationHelper::BUTTON_SECONDARY %>
-        </div>
-        <%= form_with url: discard_lead_path(@lead), method: :patch, class: "space-y-2 border-t border-slate-100 pt-3" do |f| %>
-          <%= f.label :discard_reason, "Descartar", class: ApplicationHelper::LABEL_CLASS %>
-          <%= f.text_field :discard_reason, required: true, placeholder: "Motivo (oferta de servicios, fuera de alcance…)", class: ApplicationHelper::INPUT_CLASS %>
-          <%= f.submit "Descartar", class: ApplicationHelper::BUTTON_DANGER %>
+    <details class="group rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" data-controller="disclosure">
+      <summary class="flex cursor-pointer items-center justify-between text-sm font-semibold">Datos<span class="text-xs font-normal text-slate-500 group-open:hidden">Publicado, plazo, competencia, autor…</span></summary>
+      <dl class="mt-3 space-y-2 text-sm">
+        <% [["Publicado", @lead.published_at ? date_label(@lead.published_at) : "Sin fecha verificada"],
+            ["Cierre para ofertar", @lead.deadline_at ? date_label(@lead.deadline_at) : nil],
+            ["Propuestas visibles", @lead.competition_count],
+            ["Urgencia", ApplicationHelper::URGENCIES[@lead.urgency]],
+            ["Presupuesto (texto)", @lead.published_budget_text],
+            ["Autor", @lead.author_display_name], ["Empresa", @lead.company ? link_to(@lead.company.trade_name, @lead.company) : nil],
+            ["Responsable", @lead.owner&.name], ["Origen del registro", @lead.created_via]].each do |label, value| %>
+          <div class="flex justify-between gap-3"><dt class="text-slate-500"><%= label %></dt><dd class="text-right"><%= value.presence || "—" %></dd></div>
         <% end %>
+      </dl>
+    </details>
+
+    <% if can_update && open_lead %>
+      <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+        <h2 class="text-sm font-semibold">Fuente</h2>
+        <p class="mt-1 text-xs text-slate-500">Abrí la fuente y confirmá que el texto y la fecha coinciden.</p>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <%= button_to "Verificada", verify_lead_path(@lead), method: :patch, class: "#{ApplicationHelper::BUTTON_SECONDARY} w-full", form_class: "contents" %>
+          <%= button_to "No se pudo abrir", verify_lead_path(@lead, result: "unreachable"), method: :patch, class: "#{ApplicationHelper::BUTTON_SECONDARY} w-full", form_class: "contents" %>
+        </div>
+        <details class="mt-3 border-t border-slate-100 pt-3">
+          <summary class="cursor-pointer text-sm font-medium text-red-700">Descartar prospecto</summary>
+          <%= form_with url: discard_lead_path(@lead), method: :patch, class: "mt-2 space-y-2" do |f| %>
+            <%= f.label :discard_reason, "Motivo", class: ApplicationHelper::LABEL_CLASS %>
+            <%= f.text_field :discard_reason, required: true, placeholder: "Oferta de servicios, fuera de alcance…", class: ApplicationHelper::INPUT_CLASS %>
+            <%= f.submit "Descartar", class: ApplicationHelper::BUTTON_DANGER %>
+          <% end %>
+        </details>
       </section>
     <% end %>
 
     <% if policy(@lead).review_analysis? %>
-      <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-        <h2 class="text-sm font-semibold">Cargar análisis de Claude</h2>
-        <%= form_with url: lead_analyses_path(@lead), class: "mt-2 space-y-2" do |f| %>
-          <%= f.text_area :analysis, rows: 4, required: true, class: "#{ApplicationHelper::INPUT_CLASS} font-mono text-xs", placeholder: "JSON de eq-lead-qualifier" %>
+      <details class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+        <summary class="cursor-pointer text-sm font-semibold">Cargar análisis de Claude</summary>
+        <%= form_with url: lead_analyses_path(@lead), class: "mt-3 space-y-2" do |f| %>
+          <%= f.text_area :analysis, rows: 4, required: true, class: "#{ApplicationHelper::INPUT_CLASS} font-mono text-xs", placeholder: "JSON de eq-lead-qualifier", "aria-label": "JSON del análisis" %>
           <%= f.submit "Cargar como propuesta", class: ApplicationHelper::BUTTON_SECONDARY %>
         <% end %>
-      </section>
+      </details>
     <% end %>
 
     <% if @duplicates.any? %>
-      <section class="rounded-lg bg-white p-5 ring-1 ring-amber-200">
+      <section class="rounded-lg bg-white p-4 ring-1 ring-amber-200 sm:p-5">
         <h2 class="text-sm font-semibold text-amber-900">Posibles duplicados (mismo autor y fuente)</h2>
         <ul class="mt-2 space-y-1 text-sm"><% @duplicates.each do |d| %><li><%= link_to d.title, d, class: "text-indigo-600 hover:underline" %></li><% end %></ul>
       </section>

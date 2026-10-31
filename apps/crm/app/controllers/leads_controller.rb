@@ -13,6 +13,7 @@ class LeadsController < ApplicationController
     @criteria = ScoringCriterion.current
     @scores = @lead.lead_scores.index_by(&:scoring_criterion_id)
     @pending_analysis = @lead.ai_analyses.pending.order(created_at: :desc).first
+    @accepted_analysis = @lead.ai_analyses.where(status: "accepted").includes(:reviewed_by).order(reviewed_at: :desc).first
     @activities = @lead.activities.includes(:owner).chronological
     @duplicates = possible_duplicates
   end

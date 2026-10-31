@@ -33,7 +33,7 @@
                 <%= link_to lead.title, lead, class: "font-medium text-slate-900 hover:text-indigo-600" %>
                 <p class="truncate text-xs text-slate-500"><%= lead.services.map(&:name).join(", ").presence || "Servicio sin definir" %></p>
               </td>
-              <td class="px-4 py-3"><%= score_badge(lead) %><% if lead.commercial_priority %><span class="mt-1 block w-fit rounded px-1.5 py-0.5 text-xs ring-1 <%= ApplicationHelper::PRIORITY_STYLES[lead.commercial_priority] %>"><%= CommercialPriority::LABELS[lead.commercial_priority].delete_prefix("Prioridad comercial ").capitalize %></span><% end %></td>
+              <td class="px-4 py-3"><%= score_badge(lead) %><% if lead.commercial_priority %><span class="mt-1 block"><%= priority_badge(lead.commercial_priority, estimated: lead.verification_status != "verified" || lead.score.nil?) %></span><% end %></td>
               <td class="px-4 py-3 hidden md:table-cell"><%= lead.source.name %></td>
               <td class="px-4 py-3 hidden md:table-cell"><%= lead.country&.name || "—" %></td>
               <td class="px-4 py-3 hidden lg:table-cell"><%= lead.published_at ? date_label(lead.published_at) : "Sin fecha verificada" %></td>
