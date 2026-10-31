@@ -117,12 +117,40 @@
       <dl class="mt-3 space-y-2 text-sm">
         <% [["País", @lead.country&.name], ["Servicios", @lead.services.map(&:name).join(", ").presence], ["Publicado", @lead.published_at ? date_label(@lead.published_at) : "Sin fecha verificada"],
             ["Urgencia", ApplicationHelper::URGENCIES[@lead.urgency]], ["Presupuesto publicado", @lead.published_budget_text.presence || "No publicado"],
+            ["Presupuesto registrado", @lead.budget_currency ? "#{@lead.budget_min_amount} – #{@lead.budget_max_amount}" : nil], ["Propuestas visibles", @lead.competition_count],
+            ["Cierre para ofertar", @lead.deadline_at ? date_label(@lead.deadline_at) : nil],
             ["Autor", @lead.author_display_name], ["Empresa", @lead.company ? link_to(@lead.company.trade_name, @lead.company) : nil],
             ["Responsable", @lead.owner&.name], ["Origen del registro", @lead.created_via]].each do |label, value| %>
           <div class="flex justify-between gap-3"><dt class="text-slate-500"><%= label %></dt><dd class="text-right"><%= value.presence || "—" %></dd></div>
         <% end %>
       </dl>
     </section>
+
+    <% if @lead.commercial_priority %>
+      <% breakdown = @lead.priority_breakdown %>
+      <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+        <h2 class="text-sm font-semibold">Prioridad comercial</h2>
+        <p class="mt-2 inline-flex rounded-md px-2 py-1 text-sm font-semibold ring-1 <%= ApplicationHelper::PRIORITY_STYLES[@lead.commercial_priority] %>"><%= CommercialPriority::LABELS[@lead.commercial_priority] %></p>
+        <p class="mt-2 text-xs text-slate-500">Atractivo económico <%= @lead.priority_score %> / 100 · confianza <%= number_to_percentage(@lead.priority_confidence.to_f * 100, precision: 0) %><%= " · limitada a media por datos insuficientes" if breakdown["capped_by_confidence"] %></p>
+        <p class="mt-1 text-xs text-slate-500">Rentabilidad: desconocida (falta <%= Array(breakdown.dig("profitability", "missing")).to_sentence %>)</p>
+        <% if breakdown["blockers"].present? %>
+          <ul class="mt-3 space-y-1 text-sm text-rose-800"><% breakdown["blockers"].each do |reason| %><li>• <%= reason %></li><% end %></ul>
+        <% end %>
+        <% if breakdown["alerts"].present? %>
+          <ul class="mt-3 space-y-1 text-sm text-amber-800"><% breakdown["alerts"].each do |alert| %><li>• <%= alert %></li><% end %></ul>
+        <% end %>
+        <dl class="mt-3 space-y-2 text-sm">
+          <% Array(breakdown["factors"]).each do |factor| %>
+            <div><div class="flex justify-between gap-3"><dt class="text-slate-500"><%= ApplicationHelper::PRIORITY_FACTORS[factor["key"]] %></dt><dd class="tabular-nums"><%= factor["points"] %> / <%= factor["weight"] %></dd></div>
+              <p class="text-xs text-slate-500"><%= factor["note"] %></p></div>
+          <% end %>
+        </dl>
+        <% if breakdown["excluded"].present? %>
+          <p class="mt-3 text-xs font-semibold text-slate-500">Sin datos (fuera del cálculo)</p>
+          <ul class="mt-1 space-y-1 text-xs text-slate-500"><% breakdown["excluded"].each do |item| %><li><%= ApplicationHelper::PRIORITY_FACTORS[item["key"]] %>: <%= item["reason"] %></li><% end %></ul>
+        <% end %>
+      </section>
+    <% end %>
 
     <% if policy(@lead).update? && !%w[discarded converted].include?(@lead.status) %>
       <section class="space-y-3 rounded-lg bg-white p-5 ring-1 ring-slate-200">

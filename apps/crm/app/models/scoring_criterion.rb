@@ -7,8 +7,9 @@ class ScoringCriterion < ApplicationRecord
 
   scope :ordered, -> { order(:position) }
 
+  # The active rubric decides; a newer draft version is never picked up by itself.
   def self.current_version
-    maximum(:version)
+    RubricVersion.active_version || minimum(:version)
   end
 
   def self.current

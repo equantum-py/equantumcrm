@@ -1,0 +1,16 @@
+<%= form_with model: [:admin, threshold], class: "space-y-4" do |f| %>
+  <%= form_errors(threshold) %>
+  <p class="rounded-md bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200">Solo clasifican por tamaño. No son precios ni descartan oportunidades. Indicá qué decisión de Dirección los respalda.</p>
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div><%= f.label :currency, "Moneda", class: ApplicationHelper::LABEL_CLASS %><%= f.select :currency, CommercialThreshold::CURRENCIES, {}, class: ApplicationHelper::INPUT_CLASS %><%= field_error(threshold, :currency) %></div>
+    <div><%= f.label :medium_from_amount, "Medio desde", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :medium_from_amount, value: threshold.medium_from_cents && threshold.medium_from_amount.to_d.to_s("F").delete_suffix(".0"), required: true, inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :high_from_amount, "Alto desde", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :high_from_amount, value: threshold.high_from_cents && threshold.high_from_amount.to_d.to_s("F").delete_suffix(".0"), required: true, inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %><%= field_error(threshold, :high_from_cents) %></div>
+    <div class="sm:col-span-3"><%= f.label :approval_reference, "Respaldo de la decisión", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :approval_reference, required: true, placeholder: "Ej.: Orden de Dirección del 30/10/2026", class: ApplicationHelper::INPUT_CLASS %><%= field_error(threshold, :approval_reference) %></div>
+    <div class="sm:col-span-3"><%= f.label :notes, "Notas", class: ApplicationHelper::LABEL_CLASS %><%= f.text_area :notes, rows: 2, class: ApplicationHelper::INPUT_CLASS %></div>
+  </div>
+  <div class="flex gap-2">
+    <%= f.submit "Guardar umbral", class: ApplicationHelper::BUTTON_PRIMARY %>
+    <%= link_to "Cancelar", admin_commercial_thresholds_path, class: ApplicationHelper::BUTTON_SECONDARY %>
+    <% if threshold.persisted? %><%= link_to "Eliminar", admin_commercial_threshold_path(threshold), data: { turbo_method: :delete, turbo_confirm: "¿Eliminar este umbral?" }, class: ApplicationHelper::BUTTON_DANGER %><% end %>
+  </div>
+<% end %>

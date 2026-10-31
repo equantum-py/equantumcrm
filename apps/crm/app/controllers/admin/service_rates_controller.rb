@@ -1,5 +1,5 @@
 class Admin::ServiceRatesController < ApplicationController
-  before_action :set_rate, only: %i[edit update destroy]
+  before_action :set_rate, only: %i[edit update destroy approve]
 
   def index
     authorize ServiceRate
@@ -13,11 +13,11 @@ class Admin::ServiceRatesController < ApplicationController
   end
 
   def create
-    @rate = ServiceRate.new(approved_by: current_user, approved_at: Time.current)
+    @rate = ServiceRate.new(created_by: current_user, status: "pending")
     @rate.assign_attributes(rate_params)
     authorize @rate
     if @rate.save
-      redirect_to admin_service_rates_path, notice: "Tarifa aprobada y registrada."
+      redirect_to admin_service_rates_path, notice: "Tarifa registrada. Queda pendiente de aprobación."
     else
       render :new, status: :unprocessable_content
     end
@@ -29,12 +29,19 @@ class Admin::ServiceRatesController < ApplicationController
 
   def update
     authorize @rate
-    @rate.assign_attributes(rate_params.merge(approved_by: current_user, approved_at: Time.current))
+    @rate.assign_terms(rate_params)
     if @rate.save
-      redirect_to admin_service_rates_path, notice: "Tarifa actualizada."
+      notice = @rate.status == "pending" ? "Tarifa actualizada. Queda pendiente de aprobación." : "Tarifa actualizada."
+      redirect_to admin_service_rates_path, notice: notice
     else
       render :edit, status: :unprocessable_content
     end
+  end
+
+  def approve
+    authorize @rate
+    @rate.approve!(current_user)
+    redirect_to admin_service_rates_path, notice: "Tarifa aprobada."
   end
 
   def destroy

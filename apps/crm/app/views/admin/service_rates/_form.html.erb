@@ -1,13 +1,13 @@
 <%= form_with model: [:admin, rate], class: "space-y-4" do |f| %>
   <%= form_errors(rate) %>
-  <p class="rounded-md bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200">Registrá solo precios aprobados por Dirección. Quedás como responsable de la aprobación con fecha y hora.</p>
+  <p class="rounded-md bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200">La tarifa queda pendiente hasta que alguien con permiso de aprobación la apruebe. Si editás una tarifa aprobada, vuelve a quedar pendiente.</p>
   <div class="grid gap-4 sm:grid-cols-2">
     <div><%= f.label :service_id, "Servicio", class: ApplicationHelper::LABEL_CLASS %><%= f.select :service_id, options_for_services, { include_blank: "Elegí" }, required: true, class: ApplicationHelper::INPUT_CLASS %></div>
     <div><%= f.label :country_id, "País", class: ApplicationHelper::LABEL_CLASS %><%= f.select :country_id, options_for_countries, { include_blank: "General (todos)" }, class: ApplicationHelper::INPUT_CLASS %></div>
     <div><%= f.label :currency, "Moneda", class: ApplicationHelper::LABEL_CLASS %><%= f.select :currency, ApplicationHelper::CURRENCIES, {}, class: ApplicationHelper::INPUT_CLASS %></div>
     <div><%= f.label :unit, "Modalidad", class: ApplicationHelper::LABEL_CLASS %><%= f.select :unit, ApplicationHelper::RATE_UNITS.invert, {}, class: ApplicationHelper::INPUT_CLASS %></div>
-    <div><%= f.label :min_amount, "Precio mínimo aprobado", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :min_amount, value: rate.min_cents && rate.min_amount.to_d.to_s("F").delete_suffix(".0"), required: true, inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %></div>
-    <div><%= f.label :max_amount, "Precio máximo aprobado", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :max_amount, value: rate.max_cents && rate.max_amount.to_d.to_s("F").delete_suffix(".0"), required: true, inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %><%= field_error(rate, :max_cents) %></div>
+    <div><%= f.label :min_amount, "Precio mínimo", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :min_amount, value: rate.min_cents && rate.min_amount.to_d.to_s("F").delete_suffix(".0"), required: true, inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %></div>
+    <div><%= f.label :max_amount, "Precio máximo", class: ApplicationHelper::LABEL_CLASS %><%= f.text_field :max_amount, value: rate.max_cents && rate.max_amount.to_d.to_s("F").delete_suffix(".0"), required: true, inputmode: "decimal", class: ApplicationHelper::INPUT_CLASS %><%= field_error(rate, :max_cents) %></div>
     <div><%= f.label :valid_from, "Vigente desde", class: ApplicationHelper::LABEL_CLASS %><%= f.date_field :valid_from, required: true, class: ApplicationHelper::INPUT_CLASS %></div>
     <div><%= f.label :valid_until, "Vigente hasta (opcional)", class: ApplicationHelper::LABEL_CLASS %><%= f.date_field :valid_until, class: ApplicationHelper::INPUT_CLASS %><%= field_error(rate, :valid_until) %></div>
     <div class="sm:col-span-2"><%= f.label :notes, "Notas (alcance que cubre el rango)", class: ApplicationHelper::LABEL_CLASS %><%= f.text_area :notes, rows: 2, class: ApplicationHelper::INPUT_CLASS %></div>

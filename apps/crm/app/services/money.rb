@@ -14,9 +14,18 @@ module Money
   def from_cents(cents, currency) = Amount.new(cents: cents, currency: currency)
 
   def to_cents(value, currency)
-    (BigDecimal(value.to_s.delete(" ").tr(",", ".")) * factor(currency)).round.to_i
+    (BigDecimal(normalize_number(value.to_s.delete(" "))) * factor(currency)).round.to_i
   rescue ArgumentError
     nil
+  end
+
+  # Accepts "1.500.000", "1.500.000,50", "1,500,000.50" and "1500,5".
+  def normalize_number(text)
+    case text
+    when /\A\d{1,3}(\.\d{3})+(,\d+)?\z/ then text.delete(".").tr(",", ".")
+    when /\A\d{1,3}(,\d{3})+(\.\d+)?\z/ then text.delete(",")
+    else text.tr(",", ".")
+    end
   end
 
   def formatted(cents, currency)

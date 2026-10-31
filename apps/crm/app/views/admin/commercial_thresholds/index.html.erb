@@ -1,0 +1,43 @@
+<% content_for :title, "Umbrales comerciales" %>
+<%= render "shared/page_header", title: "Umbrales de clasificación", subtitle: "Ordenan las oportunidades por tamaño del presupuesto publicado. No son precios, no se usan para cotizar y nunca descartan una oportunidad por sí solos.",
+      actions: (policy(CommercialThreshold).create? ? link_to("Registrar umbral", new_admin_commercial_threshold_path, class: ApplicationHelper::BUTTON_PRIMARY) : nil) %>
+<div class="space-y-6">
+  <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr><th class="px-4 py-3">Moneda</th><th class="px-4 py-3">Medio desde</th><th class="px-4 py-3">Alto desde</th><th class="px-4 py-3 hidden md:table-cell">Origen</th><th class="px-4 py-3"></th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% CommercialThreshold::CURRENCIES.each do |currency| %>
+            <% threshold = @thresholds.find { |t| t.currency == currency } %>
+            <tr>
+              <td class="px-4 py-3 font-medium"><%= currency %></td>
+              <% if threshold %>
+                <td class="px-4 py-3 tabular-nums"><%= threshold.medium_from_amount %></td>
+                <td class="px-4 py-3 tabular-nums"><%= threshold.high_from_amount %></td>
+                <td class="px-4 py-3 hidden md:table-cell"><%= threshold.approved_by ? "#{threshold.approved_by.name}: " : "" %><%= threshold.approval_reference %></td>
+                <td class="px-4 py-3 text-right"><% if policy(threshold).update? %><%= link_to "Editar", edit_admin_commercial_threshold_path(threshold), class: "font-medium text-indigo-600 hover:underline" %><% end %></td>
+              <% else %>
+                <td colspan="4" class="px-4 py-3 text-sm font-medium text-amber-700">Pendiente de aprobación</td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+    <h2 class="text-sm font-semibold">Versiones de la rúbrica</h2>
+    <p class="mt-1 text-xs text-slate-500">La prioridad comercial se calcula desde la v2. Activarla cambia la puntuación de los prospectos existentes y requiere aprobación: <code>bin/rails rubric:preview</code> muestra el impacto sin escribir nada.</p>
+    <ul class="mt-3 divide-y divide-slate-100 text-sm">
+      <% @rubrics.each do |rubric| %>
+        <li class="flex items-center justify-between py-2">
+          <span><%= rubric.name %></span>
+          <span class="<%= rubric.status == "active" ? "text-emerald-700" : "text-slate-500" %>"><%= { "active" => "Activa", "draft" => "Borrador", "retired" => "Retirada" }[rubric.status] %><%= " · aprobó #{rubric.approved_by.name}" if rubric.approved_by %></span>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+</div>

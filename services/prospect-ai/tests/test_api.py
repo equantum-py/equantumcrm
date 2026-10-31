@@ -16,6 +16,8 @@ INGEST = {
     "country_hint": "es",
     "contact_channel": {"kind": "platform_message"},
     "published_budget_text": "EUR 250-750",
+    "competition_count": 31,
+    "deadline_at": "2026-11-06T00:00:00Z",
     "evidence": [{"kind": "post_excerpt", "captured_at": "2026-10-30T09:00:00Z"}],
 }
 
@@ -84,6 +86,7 @@ def test_ingest_normalizes_and_forwards(client, auth, settings):
     assert seen["auth"] == "Bearer token-crm-prueba"
     assert body["text_excerpt"] == "Necesito una tienda Shopify para una marca de prueba. Envíos a toda España."
     assert body["country_hint"] == "ES"
+    assert body["competition_count"] == 31 and body["deadline_at"] == "2026-11-06T00:00:00Z"
     assert body["analysis"]["services"][0]["key"] == "shopify"
     assert body["analysis"]["fingerprint"] == response.json()["fingerprint"]
     assert response.json()["canonical_url"] == "freelancer.com/projects/demo/sintetico-1"
