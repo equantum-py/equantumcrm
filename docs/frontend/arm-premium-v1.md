@@ -1,5 +1,8 @@
 # eQuantum ARM · Frontend V1
 
+> Documento histórico de la preparación/base aprobada. Para el resultado sobre main con PR #7 incorporado, ver [Frontend V1 integrado](arm-integrated-v1.md).
+
+
 ## Auditoría y decisiones
 
 La base usa Rails 8.1, Tailwind 4, Turbo y Stimulus. Ya existían componentes de encabezado, filtros, badges, estados vacíos, permisos por acción y drag and drop de pipeline. Las principales brechas eran jerarquía visual plana, tablas que requerían desplazamiento en mobile, navegación móvil sin gestión de foco/cierre al navegar y poca claridad sobre períodos de los indicadores.

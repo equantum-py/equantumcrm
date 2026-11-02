@@ -3,5 +3,5 @@
                    "owner_id" => "Asignado a", "status" => "Estado", "band" => "Intención" }.fetch(name.to_s, label) %>
 <label class="block">
   <span class="sr-only"><%= label %></span>
-  <%= select_tag name, options_for_select(options, value), include_blank: blank_label, class: "#{ApplicationHelper::INPUT_CLASS} min-w-36", onchange: "this.form.requestSubmit()" %>
+  <%= select_tag name, options_for_select(options, value), include_blank: blank_label, class: "#{ApplicationHelper::INPUT_CLASS} min-w-36", data: { controller: "filter", action: "change->filter#submit" } %>
 </label>

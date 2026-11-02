@@ -1,5 +1,8 @@
 # PR #8 · Revisión de Dirección e integración pendiente
 
+> Documento histórico de la preparación/base aprobada. Para el resultado sobre main con PR #7 incorporado, ver [Frontend V1 integrado](arm-integrated-v1.md).
+
+
 Estado comprobado el 02/11/2026 mediante GitHub:
 
 - PR #8 aprobado con observaciones; permanece en borrador, sin autorización de fusión ni despliegue.

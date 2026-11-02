@@ -1,5 +1,8 @@
 # PR #8 · Mejoras independientes de frontend
 
+> Documento histórico de la preparación/base aprobada. Para el resultado sobre main con PR #7 incorporado, ver [Frontend V1 integrado](arm-integrated-v1.md).
+
+
 ## Alcance
 
 Se conserva la rama `frontend/arm-premium-v1` y el diseño aprobado. No se modifican `dashboard/show.html.erb`, `layouts/application.html.erb` ni `layouts/auth.html.erb`. No se cambian backend, scoring, permisos, rutas o dependencias. Agent Control y el dashboard integrado siguen pendientes de PR #7 en main.
