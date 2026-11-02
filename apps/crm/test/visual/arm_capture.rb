@@ -38,7 +38,16 @@ begin
   session.click_button "Ingresar"
   raise "Sign-in failed" unless session.has_text?("Centro de operaciones comerciales")
   pages = { dashboard: "/", leads: "/leads", lead: "/leads/#{lead.id}", pipeline: "/opportunities", companies: "/companies", activities: "/activities" }
-  [ 320, 375, 390, 768, 1366, 1440, 1920 ].each do |width|
+  agent_control_available = Rails.application.routes.url_helpers.respond_to?(:agent_control_path)
+  if agent_control_available && Pundit.policy!(user, :agent_control).show?
+    pages[:agent_control] = Rails.application.routes.url_helpers.agent_control_path
+  elsif ENV["ARM_INTEGRATION_REQUIRED"] == "1"
+    raise "ARM integration required: Agent Control route or permission is missing"
+  else
+    puts "PENDING: Agent Control is not available on this branch; integrated validation is not complete"
+  end
+  widths = [ 320, 375, 390, 768, 1366, 1440, 1920 ]
+  widths.each do |width|
     session.current_window.resize_to(width, 1000)
     pages.each do |name, path|
       session.visit(path)
@@ -74,7 +83,9 @@ begin
   session.find("button[aria-label='Abrir menú']").click
   session.driver.browser.action.send_keys(:escape).perform
   raise "Escape did not close drawer" unless session.has_css?("button[aria-expanded='false']")
-  puts "PASS: verification filter, reset, sort, Escape; 42 page/viewport checks, mobile navigation, 43 screenshots"
+  checks = pages.size * widths.size
+  puts "PASS: verification filter, reset, sort, Escape; #{checks} page/viewport checks, mobile navigation, #{checks + 1} screenshots"
+  puts "ARM integrated browser coverage: #{pages.key?(:agent_control) ? 'includes Agent Control' : 'pending PR #7 in main'}"
 ensure
   session.driver.quit
 end
