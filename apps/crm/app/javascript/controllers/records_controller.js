@@ -2,23 +2,11 @@ import { Controller } from "@hotwired/stimulus"
 
 // Presentation controls apply only to the explicitly labelled loaded result set.
 export default class extends Controller {
-  static targets = ["row", "body", "verification", "sort", "count", "empty"]
+  static targets = ["row", "body", "sort"]
 
   connect() {
     this.titleCollator = new Intl.Collator("es", { sensitivity: "base", numeric: true })
-    this.filter()
     this.sort()
-  }
-
-  filter() {
-    const verification = this.verificationTarget.value
-    let count = 0
-    this.rowTargets.forEach(row => {
-      row.hidden = Boolean(verification && row.dataset.verification !== verification)
-      if (!row.hidden) count++
-    })
-    this.countTarget.textContent = count
-    this.emptyTarget.hidden = count > 0 || !this.rowTargets.length
   }
 
   sort() {

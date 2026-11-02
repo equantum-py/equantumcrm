@@ -1,4 +1,4 @@
-# eQuantum CRM (Rails 8)
+# eQuantum ARM · aplicación Rails (Rails 8)
 
 Núcleo comercial del ecosistema eQuantum Prospect AI + CRM. Ver la arquitectura en [`docs/`](../../docs/README.md).
 
@@ -38,3 +38,10 @@ CI: `.github/workflows/crm.yml`.
 | Tarifas | Rango aprobado por servicio, país, moneda, modalidad y vigencia, con responsable; sin tarifa = "Precio pendiente de aprobación" |
 | Dashboard | KPIs calculados con datos reales y filtros por fecha, país, servicio, fuente y responsable |
 | Administración | Usuarios, tarifas y registro de auditoría |
+
+## Fase 05 · eQuantum ARM (primera entrega)
+| Módulo | Qué hace |
+|---|---|
+| Captación | Inicio con colas de trabajo: sin verificar, análisis IA por aprobar, prioridad alta sin oportunidad, publicaciones que cierran en 7 días, captados por canal |
+| Agent Control | Catálogo de agentes con interruptor y acciones permitidas, registro de ejecuciones (duración, fuente, prospectos, duplicados, errores, pendientes), límites de seguridad. Permiso `agents.read` |
+

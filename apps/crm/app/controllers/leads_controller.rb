@@ -3,9 +3,12 @@ class LeadsController < ApplicationController
 
   def index
     authorize Lead
-    @filters = params.permit(:q, :status, :country_id, :source_id, :service_id, :owner_id, :band)
+    @filters = params.permit(:q, :status, :country_id, :source_id, :service_id, :owner_id, :band, :verification, :priority, :priority_status)
     @leads = Lead.filter(@filters).includes(:source, :country, :services, :owner)
       .order(Arel.sql("leads.score DESC NULLS LAST"), detected_at: :desc).limit(200)
+    ids = @leads.map(&:id)
+    @confirmed_priority_ids = Lead.priority_confirmed.where(id: ids).pluck(:id)
+    @synthetic_lead_ids = Lead.test_data.where(id: ids).pluck(:id)
   end
 
   def show
@@ -16,6 +19,7 @@ class LeadsController < ApplicationController
     @accepted_analysis = @lead.ai_analyses.where(status: "accepted").includes(:reviewed_by).order(reviewed_at: :desc).first
     @activities = @lead.activities.includes(:owner).chronological
     @duplicates = possible_duplicates
+    @synthetic_lead = Lead.test_data.where(id: @lead.id).exists?
   end
 
   def new
@@ -45,7 +49,7 @@ class LeadsController < ApplicationController
       end
     end
     @lead.refresh_priority!
-    AnalyzeLeadJob.perform_later(@lead) if analysis_output.nil? && ProspectAiClient.configured?
+    AnalyzeLeadJob.perform_later(@lead) if analysis_output.nil? && AnalyzeLeadJob.runnable?
     redirect_to @lead, notice: analysis_output ? "Prospecto registrado. Revisá el análisis propuesto." : "Prospecto registrado."
   rescue ActiveRecord::RecordInvalid
     render :new, status: :unprocessable_content

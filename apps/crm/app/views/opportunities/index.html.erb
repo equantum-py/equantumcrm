@@ -20,7 +20,6 @@
 
 <% if @view == "kanban" %>
   <% grouped = @opportunities.group_by(&:pipeline_stage_id) %>
-  <% source_leads = policy(Lead).index? ? Lead.where(id: @opportunities.filter_map(&:lead_id)).index_by(&:id) : {} %>
   <div class="arm-kanban" tabindex="0" aria-label="Etapas del pipeline; desplazá para ver más" data-controller="kanban">
     <div class="flex gap-3">
       <% @stages.each do |stage| %>
@@ -40,8 +39,8 @@
                        data-id="<%= o.id %>" data-action="dragstart->kanban#dragstart">
                 <%= link_to o.name, o, class: "block text-sm font-medium leading-snug hover:text-indigo-600" %>
                 <p class="mt-1 truncate text-xs text-slate-500"><%= o.company.trade_name %></p>
-                <% source_lead = source_leads[o.lead_id] %>
-                <% if source_lead&.commercial_priority %><p class="mt-2"><%= priority_badge(source_lead.commercial_priority, estimated: true) %></p><% end %>
+                <% source_lead = @source_leads[o.lead_id] %>
+                <% if source_lead&.commercial_priority %><p class="mt-2"><%= priority_badge(source_lead.commercial_priority, estimated: !@confirmed_source_lead_ids.include?(source_lead.id)) %></p><% end %>
                 <p class="arm-section-note"><%= o.services.map(&:name).join(", ").presence || "Servicio por definir" %></p>
                 <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
                   <span><%= o.estimated_value || "Sin valor" %></span>

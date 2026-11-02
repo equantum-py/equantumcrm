@@ -26,6 +26,7 @@ jobs:
       run:
         working-directory: apps/crm
     env:
+      ARM_INTEGRATION_REQUIRED: "1"
       RAILS_ENV: test
       DB_HOST: localhost
       DB_USERNAME: crm

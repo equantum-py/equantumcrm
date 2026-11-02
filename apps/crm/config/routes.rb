@@ -22,6 +22,7 @@ Rails.application.routes.draw do
   end
 
   resources :companies
+  resource :agent_control, only: :show, controller: "agent_control"
   resources :opportunities do
     patch :move, on: :member
   end

@@ -1,6 +1,8 @@
 # equantumcrm
 
-**eQuantum Prospect AI + CRM** — ecosistema comercial de eQuantum Consulting para detectar oportunidades de contratación de servicios digitales, calificarlas y gestionarlas hasta el cierre.
+**eQuantum ARM (Agentic Relationship Management)** — plataforma comercial de eQuantum Consulting que evoluciona el CRM: agentes de IA detectan y analizan oportunidades, preparan borradores y sugieren seguimientos; las personas aprueban todo lo que sale hacia un cliente. Plan de transición: [`docs/10-arm-auditoria-y-transicion.md`](docs/10-arm-auditoria-y-transicion.md).
+
+Módulos: **Prospect AI** (captación y verificación), **Sales Intelligence** (scoring y priorización), **Sales Agent** (borradores), **Relationship Hub** (empresas, pipeline, actividades) y **Agent Control** (agentes, ejecuciones, aprobaciones y auditoría).
 
 El sistema tiene cinco responsabilidades:
 1. Buscar oportunidades: detectar personas y empresas que estén solicitando servicios digitales.

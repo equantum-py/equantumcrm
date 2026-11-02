@@ -18,6 +18,20 @@ lead = Lead.create!(title: "[DEMO] Rediseño de tienda Shopify #{suffix}", sourc
 opportunity = Opportunity.create!(name: "[DEMO] Sitio corporativo #{suffix}", company: company, owner: user,
   country: company.country, pipeline_stage: PipelineStage.ordered.first, currency: "USD", estimated_value: "1200")
 Activity.create!(title: "[DEMO] Revisar alcance", kind: "follow_up", subject: lead, owner: user, due_at: 1.day.from_now)
+# Controlled contract fixtures in the isolated test database. These unflagged
+# rows exercise real-data scopes; they are never created outside Rails.env.test.
+confirmed = Lead.create!(title: "Solicitud de tienda online", source: lead.source, country: company.country, owner: user,
+  need_summary: "Registro exclusivo del laboratorio visual.", verification_status: "verified", score: 80,
+  score_band: "high", commercial_priority: "high", detected_at: 2.days.ago)
+estimated = Lead.create!(title: "Rediseño web por revisar", source: lead.source, country: company.country, owner: user,
+  need_summary: "Registro exclusivo del laboratorio visual.", commercial_priority: "high", deadline_at: 2.days.from_now,
+  detected_at: 1.day.ago)
+estimated.ai_analyses.create!(kind: "scoring_proposal", provider: "prospect_ai:job", output: {})
+AgentRun.create!(agent: Agent.find_by!(key: "lead_analyst"), trigger: "manual", subject: estimated,
+  triggered_by: user, started_at: 2.minutes.ago, finished_at: 1.minute.ago, status: "succeeded",
+  summary: "[DEMO] Historial de laboratorio; no se ejecutó ningún agente.", source_key: "manual",
+  leads_detected: 1, pending_approvals: 1)
+
 
 Capybara.register_driver :arm_chrome do |app|
   options = Selenium::WebDriver::Chrome::Options.new
@@ -88,10 +102,10 @@ begin
   session.find("#primary-navigation a", text: "Dashboard", exact_text: true).click
   raise "Drawer did not close" unless session.has_css?("button[aria-expanded='false']")
   session.visit "/leads"
-  session.find("select[data-records-target='verification']").select("Verificado")
+  session.find("select[name='verification']").select("Inaccesible")
   raise "Verification filter failed" unless session.has_css?("[data-records-target='count']", text: "0")
-  raise "Missing filter empty state" unless session.has_text?("No hay registros cargados con esta verificación.")
-  session.find("select[data-records-target='verification']").select("Todas")
+  raise "Missing filter empty state" unless session.has_text?("No hay prospectos con estos filtros")
+  session.find("select[name='verification'] option[value='']").select_option
   raise "Filter reset failed" unless session.has_link?(lead.title)
   session.find("select[data-records-target='sort']").select("Nombre")
   session.find("button[aria-label='Abrir menú']").click
@@ -132,6 +146,17 @@ begin
   session.visit "/leads"
   duration = session.evaluate_script("getComputedStyle(document.querySelector('main input')).transitionDuration")
   raise "Reduced motion ignored" unless duration.split(",").all? { |value| value.strip == "0s" }
+
+  raise "Agent Control missing from integrated capture" unless pages.key?(:agent_control)
+  session.visit "/agent_control"
+  raise "Run history missing" unless session.has_text?("Historial de laboratorio")
+  session.visit "/?country_id=#{company.country_id}"
+  confirmed_link = session.find("a[href*='priority_status=confirmed']")
+  confirmed_link.click
+  raise "Confirmed queue filter lost" unless session.has_select?("priority_status", selected: "Confirmada")
+  raise "Country queue filter lost" unless session.has_select?("country_id", selected: company.country.name)
+  raise "Confirmed lead missing" unless session.has_link?(confirmed.title)
+  raise "Estimated lead leaked into confirmed list" if session.has_link?(estimated.title, wait: 0)
 
   checks = pages.size * widths.size
   puts "PASS: verification, sort, focus trap/return, inert cleanup, resize, clipboard outcomes, keyboard Kanban, empty states, reduced motion; #{checks} page/viewport checks, mobile navigation, #{checks + 3} screenshots"

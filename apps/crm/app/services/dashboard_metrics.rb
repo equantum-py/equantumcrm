@@ -1,4 +1,5 @@
 # Commercial KPIs computed from real records. Empty data yields zeros.
+# Test or demo leads (Lead.test_data) and their opportunities are never counted.
 class DashboardMetrics
   attr_reader :from, :to
 
@@ -59,7 +60,82 @@ class DashboardMetrics
     scope.count
   end
 
+  # Prospecting work queues. They show what is open now, not what happened in
+  # the period, so they ignore the date filter but keep the others.
+  def to_verify = open_leads.where(verification_status: "unverified").count
+  def pending_ai_reviews = AiAnalysis.pending.where(subject_type: "Lead", subject_id: open_leads.select(:id)).count
+
+  # High priority leads without an opportunity, split by whether the priority
+  # is confirmed (Lead.priority_confirmed) or still an estimate. The total is
+  # kept for compatibility: it mixes both and must not read as "ready".
+  def high_priority_without_opportunity = high_priority_open.count
+  def high_priority_confirmed = high_priority_open.priority_confirmed.count
+  def high_priority_estimated = high_priority_without_opportunity - high_priority_confirmed
+
+  def closing_soon(limit: 5)
+    open_leads.where(listing_closed: false, deadline_at: Time.current..7.days.from_now).order(:deadline_at).limit(limit)
+  end
+
+  def closing_soon_count = open_leads.where(listing_closed: false, deadline_at: Time.current..7.days.from_now).count
+
+  # Leads captured in the period by channel (manual capture, API, Skill).
+  def leads_by_channel = leads.group(:created_via).count
+
+  # Read-only presentation contract. All commercial scopes remain defined here
+  # or in Lead; views and helpers do not reproduce filtering or priority rules.
+  def leads_verified = leads.where(verification_status: "verified").count
+  def active_opportunities = base_opportunities.open.count
+  def commercial_priorities = leads.group(:commercial_priority).count
+
+  def upcoming_activities_count = pending_activities.where(due_at: Time.current..).count
+
+  def pending_activities_preview
+    pending_activities.includes(:owner, :subject).chronological.limit(6)
+  end
+
+  def opportunities_preview
+    @opportunities_preview ||= base_opportunities.open.includes(:company, :country, :pipeline_stage, :services, :lead)
+      .order(updated_at: :desc).limit(8).to_a
+  end
+
+  def opportunity_confirmed_priority_ids
+    @opportunity_confirmed_priority_ids ||= Lead.priority_confirmed.where(id: opportunities_preview.filter_map(&:lead_id)).pluck(:id)
+  end
+
+  def capture_series
+    zone = Lead.connection.quote(Time.zone.tzinfo.name)
+    local_day = Arel.sql("DATE(detected_at AT TIME ZONE 'UTC' AT TIME ZONE #{zone})")
+    counts = leads.group(local_day).count
+    days = (to - from).to_i + 1
+    return [] if days <= 0
+
+    step = [ (days / 60.0).ceil, 1 ].max
+    buckets = counts.group_by { |day, _| ((day - from).to_i / step) }
+    (0...days).step(step).map do |offset|
+      [ from + offset, Array(buckets[offset / step]).sum { |_, count| count } ]
+    end
+  end
+
   private
+    # Same owner-only pending activity semantics as the existing dashboard.
+    # Synthetic exclusion is coordinated separately with Claude; no UI workaround.
+    def pending_activities
+      scope = Activity.pending
+      scope = scope.where(owner_id: @owner_id) if @owner_id
+      scope
+    end
+
+    def high_priority_open = open_leads.where(commercial_priority: "high").where.missing(:opportunity)
+
+    def open_leads
+      scope = Lead.real.where.not(status: %w[discarded converted])
+      scope = scope.where(country_id: @country_id) if @country_id
+      scope = scope.where(source_id: @source_id) if @source_id
+      scope = scope.where(owner_id: @owner_id) if @owner_id
+      scope = scope.where(id: LeadService.where(service_id: @service_id).select(:lead_id)) if @service_id
+      scope
+    end
+
     def parse_date(value)
       Date.iso8601(value) if value.present?
     rescue Date::Error
@@ -67,7 +143,7 @@ class DashboardMetrics
     end
 
     def leads
-      scope = Lead.where(detected_at: period)
+      scope = Lead.real.where(detected_at: period)
       scope = scope.where(country_id: @country_id) if @country_id
       scope = scope.where(source_id: @source_id) if @source_id
       scope = scope.where(owner_id: @owner_id) if @owner_id
@@ -76,7 +152,7 @@ class DashboardMetrics
     end
 
     def base_opportunities
-      scope = Opportunity.all
+      scope = Opportunity.where(lead_id: nil).or(Opportunity.where.not(lead_id: Lead.test_data.select(:id)))
       scope = scope.where(country_id: @country_id) if @country_id
       scope = scope.where(owner_id: @owner_id) if @owner_id
       scope = scope.where(id: OpportunityService.where(service_id: @service_id).select(:opportunity_id)) if @service_id

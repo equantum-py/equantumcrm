@@ -7,8 +7,8 @@ class ArmFrontendTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "title", text: /eQuantum ARM/
     assert_select "h1", text: "Centro de operaciones comerciales"
-    assert_select ".arm-metric", count: 6
-    assert_select ".arm-metric dd", text: "0", count: 6
+    assert_select ".arm-period-metrics .arm-metric", count: 6
+    assert_select ".arm-period-metrics dd", text: "0", count: 6
     assert_select "a[href='#main-content']", text: "Saltar al contenido"
     assert_select "button[aria-controls='primary-navigation'][aria-expanded='false']"
     assert_select "a", text: "Sales Agent", count: 0
@@ -23,8 +23,9 @@ class ArmFrontendTest < ActionDispatch::IntegrationTest
     sign_in user
     get root_path(country_id: country.id)
     assert_response :success
-    assert_select ".arm-metric:nth-child(2) dd", text: "1"
-    assert_select ".arm-metric:nth-child(4) dd", text: "1"
+    assert_select ".arm-period-metrics .arm-metric:nth-child(2) dd", text: "1"
+    assert_select ".arm-period-metrics .arm-metric:nth-child(4) dd", text: "0"
+    assert_select ".arm-queue-metrics .arm-metric:nth-child(4) dd a", text: "2"
   end
 
   test "capture visualization bounds long date ranges" do
@@ -49,12 +50,14 @@ class ArmFrontendTest < ActionDispatch::IntegrationTest
     sign_in create_user
     create_lead(title: "[DEMO] Tienda de prueba")
     create_lead(title: "Solicitud comercial")
+    create_lead(title: "Prueba sin prefijo", synthetic: true)
     get leads_path
     assert_response :success
-    assert_select ".arm-demo", count: 1
+    assert_select ".arm-demo", count: 2
     assert_select "select[name='country_id']"
-    assert_select "select[data-records-target='verification']"
-    assert_select "tr[data-records-target='row']", count: 2
+    assert_select "select[name='verification']"
+    assert_select "select[name='priority_status']"
+    assert_select "tr[data-records-target='row']", count: 3
   end
 
   test "open opportunity focus excludes closed stages" do

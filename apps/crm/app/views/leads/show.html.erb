@@ -21,7 +21,7 @@
     <% end %>
   </div>
 
-  <% if @lead.title.match?(/\A\s*\[(?:DEMO|SINT[EÉ]TICO)\]/i) %><p class="arm-demo">DEMO · registro de prueba</p><% end %>
+  <% if @synthetic_lead %><p class="arm-demo">DEMO · registro de prueba</p><% end %>
   <h1 id="lead-title" class="mt-2 text-xl font-semibold leading-snug tracking-tight sm:text-2xl"><%= @lead.title %></h1>
   <p class="mt-1 text-sm text-slate-600">
     <%= @lead.services.map(&:name).join(", ").presence || "Servicio sin definir" %> ·
