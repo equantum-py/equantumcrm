@@ -16,7 +16,7 @@ La implementación mantiene ese stack y todas las acciones. Agrega tokens de col
 - Las propuestas se muestran como **enviadas**, según el cálculo existente: no hay una entidad de propuestas pendientes. No se infieren pendientes.
 - No se agregan menús de agentes, notificaciones ni ejecuciones simuladas. Prospect AI sigue en la ficha existente.
 - El listado obtiene hasta 200 registros del servidor. Verificación y orden actúan sobre esos registros y lo indican expresamente. Los filtros superiores siguen consultando toda la base.
-- La etiqueta DEMO identifica títulos que ya contienen DEMO o sintético; no hay un campo de clasificación de datos de prueba en el modelo actual. Se recomienda incorporarlo en una futura tarea de backend y excluirlos explícitamente de métricas. Esta entrega no elimina registros ni altera los cálculos del backend.
+- La etiqueta DEMO identifica solamente títulos marcados explícitamente con el prefijo [DEMO] o [SINTÉTICO]; no hay un campo de clasificación de datos de prueba en el modelo actual. Se recomienda incorporarlo en una futura tarea de backend y excluirlos explícitamente de métricas. Esta entrega no elimina registros ni altera los cálculos del backend.
 - La prioridad alta del dashboard es la clasificación comercial almacenada, distinta de la banda de intención. Puede seguir pendiente de aprobación; las fichas conservan esa distinción.
 - Captación/país/fuente/prioridad se filtran por fecha de detección. Pipeline abierto y etapas usan todas las fechas. Actividades usan responsable; los otros filtros comerciales no se aplican a actividades. Cada sección lo explica.
 

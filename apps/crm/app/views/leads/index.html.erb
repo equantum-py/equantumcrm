@@ -47,7 +47,7 @@
           <% @leads.each do |lead| %>
             <tr data-records-target="row" data-verification="<%= lead.verification_status %>" data-score="<%= lead.score || -1 %>" data-detected="<%= lead.detected_at.to_i %>" data-title="<%= lead.title %>" class="hover:bg-slate-50">
               <td data-label="Prospecto" class="px-4 py-3 max-w-md">
-                <% if lead.title.match?(/\b(?:DEMO|SINT[EÉ]TICO)\b/i) %><span class="arm-demo">DEMO · registro de prueba</span><% end %>
+                <% if lead.title.match?(/\A\s*\[(?:DEMO|SINT[EÉ]TICO)\]/i) %><span class="arm-demo">DEMO · registro de prueba</span><% end %>
                 <%= link_to lead.title, lead, class: "font-medium text-slate-900 hover:text-indigo-600" %>
                 <p class="arm-section-note"><%= lead.country&.name || "País sin confirmar" %> · <%= lead_budget_label(lead) %></p>
                 <p class="truncate text-xs text-slate-500"><%= lead.services.map(&:name).join(", ").presence || "Servicio sin definir" %></p>
