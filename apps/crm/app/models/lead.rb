@@ -5,6 +5,10 @@ class Lead < ApplicationRecord
   VERIFICATION_STATUSES = %w[unverified verified unreachable rejected].freeze
   URGENCIES = %w[unknown low medium high].freeze
   CREATED_VIA = %w[manual api skill].freeze
+  # Test or demo records. Flagged by the synthetic column or, for rows that
+  # predate it, by a title prefix. Dashboards exclude them.
+  SYNTHETIC_TITLE_SQL = '^\s*\[(DEMO|SINT[EÉ]TICO)\]'.freeze
+  SYNTHETIC_TITLE = /\A\s*\[(DEMO|SINT[EÉ]TICO)\]/i
 
   belongs_to :source
   belongs_to :country, optional: true
@@ -37,6 +41,23 @@ class Lead < ApplicationRecord
   validate :qualification_requirements, if: -> { status == "qualified" && status_changed? }
 
   scope :recent, -> { order(detected_at: :desc) }
+  scope :test_data, -> { where(synthetic: true).or(where("leads.title ~* ?", SYNTHETIC_TITLE_SQL)) }
+  scope :real, -> { where(synthetic: false).where.not("leads.title ~* ?", SYNTHETIC_TITLE_SQL) }
+
+  # Priority is confirmed only when nothing on the lead page would label it
+  # "estimada" (see LeadsHelper#priority_pending_reasons): verified source,
+  # intent scored, no AI analysis waiting and no possible duplicate (same
+  # author on the same source). Anything else stays an estimate.
+  scope :priority_confirmed, lambda {
+    where(verification_status: "verified").where.not(score: nil)
+      .where.not(id: AiAnalysis.pending.where(subject_type: "Lead").select(:subject_id))
+      .where(<<~SQL.squish)
+        COALESCE(leads.author_display_name, '') = '' OR NOT EXISTS (
+          SELECT 1 FROM leads dup WHERE dup.id <> leads.id AND dup.source_id = leads.source_id
+          AND dup.author_display_name = leads.author_display_name)
+      SQL
+  }
+  scope :priority_estimated, -> { where.not(commercial_priority: nil).where.not(id: priority_confirmed.select(:id)) }
 
   def self.filter(params)
     scope = all
@@ -47,6 +68,8 @@ class Lead < ApplicationRecord
     scope = scope.joins(:lead_services).where(lead_services: { service_id: params[:service_id] }) if params[:service_id].present?
     scope = scope.where(score_band: params[:band]) if params[:band].present?
     scope = scope.where(commercial_priority: params[:priority]).where.not(status: %w[discarded converted]) if params[:priority].present?
+    scope = scope.priority_confirmed if params[:priority_status] == "confirmed"
+    scope = scope.priority_estimated if params[:priority_status] == "estimated"
     scope = scope.where(verification_status: params[:verification]).where.not(status: %w[discarded converted]) if params[:verification].present?
     if params[:q].present?
       term = "%#{sanitize_sql_like(params[:q].strip)}%"
@@ -105,6 +128,7 @@ class Lead < ApplicationRecord
   private
     def set_defaults
       self.detected_at ||= Time.current
+      self.synthetic = true if title.to_s.match?(SYNTHETIC_TITLE)
       if fingerprint.blank? && source
         self.fingerprint = self.class.fingerprint_for(source_key: source.key, url: original_url, text: need_summary.presence || title)
       end

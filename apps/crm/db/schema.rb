@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -76,6 +76,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_180000) do
     t.index ["key"], name: "index_agents_on_key", unique: true
     t.check_constraint "area::text = ANY (ARRAY['prospect_ai'::character varying, 'sales_intelligence'::character varying, 'sales_agent'::character varying, 'relationship_hub'::character varying]::text[])", name: "agents_area"
     t.check_constraint "execution_mode::text = ANY (ARRAY['manual'::character varying, 'scheduled'::character varying]::text[])", name: "agents_execution_mode"
+    t.check_constraint "jsonb_typeof(allowed_actions) = 'array'::text AND NOT allowed_actions ?| ARRAY['send_proposals'::text, 'contact_clients'::text, 'commit_prices'::text, 'hire_services'::text, 'spend_money'::text]", name: "agents_no_forbidden_actions"
   end
 
   create_table "ai_analyses", force: :cascade do |t|
@@ -274,6 +275,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_180000) do
     t.decimal "priority_confidence", precision: 3, scale: 2
     t.jsonb "priority_breakdown", default: {}, null: false
     t.datetime "priority_calculated_at"
+    t.boolean "synthetic", default: false, null: false
     t.index ["commercial_priority"], name: "index_leads_on_commercial_priority"
     t.index ["company_id"], name: "index_leads_on_company_id"
     t.index ["country_id", "detected_at"], name: "index_leads_on_country_id_and_detected_at"
@@ -283,6 +285,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_180000) do
     t.index ["source_id", "detected_at"], name: "index_leads_on_source_id_and_detected_at"
     t.index ["source_id"], name: "index_leads_on_source_id"
     t.index ["status", "score"], name: "index_leads_on_status_and_score"
+    t.index ["synthetic"], name: "index_leads_on_synthetic", where: "synthetic"
     t.check_constraint "budget_min_cents IS NULL OR budget_max_cents IS NULL OR budget_max_cents >= budget_min_cents", name: "leads_budget_range"
     t.check_constraint "commercial_priority::text = ANY (ARRAY['high'::character varying::text, 'medium'::character varying::text, 'low'::character varying::text, 'not_recommended'::character varying::text])", name: "leads_commercial_priority"
     t.check_constraint "competition_count IS NULL OR competition_count >= 0", name: "leads_competition_count"

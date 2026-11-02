@@ -50,4 +50,36 @@ class AgentTest < ActiveSupport::TestCase
     assert_equal 1, failed.errors_count
     assert_match "fuente caída", failed.error_messages.first
   end
+
+  test "authorize! enforces the switch, the allowed list and the forbidden list" do
+    agent = build_agent(key: "agente_autorizado", enabled: true, allowed_actions: %w[read_public_sources ingest_leads])
+    agent.save!
+    assert_equal agent, agent.authorize!(:read_public_sources)
+    assert_raises(Agent::NotAuthorized) { agent.authorize!("draft_messages") }
+    Agent::FORBIDDEN_ACTIONS.each_key do |action|
+      assert_raises(Agent::NotAuthorized) { agent.authorize!(action) }
+    end
+    agent.update!(enabled: false)
+    error = assert_raises(Agent::NotAuthorized) { Agent.authorize!("agente_autorizado", "read_public_sources") }
+    assert_match "desactivado", error.message
+    assert_raises(Agent::NotAuthorized) { Agent.authorize!("no_existe", "read_public_sources") }
+    assert_not agent.allowed_to?("read_public_sources")
+  end
+
+  test "the database rejects forbidden actions even when validations are skipped" do
+    agent = build_agent(key: "agente_sql")
+    agent.save!
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Agent.transaction(requires_new: true) { agent.update_columns(allowed_actions: %w[draft_messages contact_clients]) }
+    end
+    assert_equal %w[read_public_sources], agent.reload.allowed_actions
+  end
+
+  test "seeds never switch a disabled agent back on" do
+    Agent.find_by!(key: "lead_analyst").update!(enabled: false)
+    Rails.application.load_seed
+    assert_not Agent.find_by!(key: "lead_analyst").enabled
+  ensure
+    Agent.find_by!(key: "lead_analyst").update!(enabled: true)
+  end
 end

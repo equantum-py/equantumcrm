@@ -18,6 +18,11 @@ class CreateAgentsAndAgentRuns < ActiveRecord::Migration[8.1]
     add_index :agents, :key, unique: true
     add_check_constraint :agents, "area IN ('prospect_ai','sales_intelligence','sales_agent','relationship_hub')", name: "agents_area"
     add_check_constraint :agents, "execution_mode IN ('manual','scheduled')", name: "agents_execution_mode"
+    # Second barrier besides the model validation: even a direct SQL update
+    # cannot give an agent a commercial action.
+    add_check_constraint :agents, "jsonb_typeof(allowed_actions) = 'array' AND NOT (allowed_actions ?| " \
+                                  "ARRAY['send_proposals','contact_clients','commit_prices','hire_services','spend_money'])",
+                         name: "agents_no_forbidden_actions"
 
     create_table :agent_runs do |t|
       t.references :agent, null: false, foreign_key: true

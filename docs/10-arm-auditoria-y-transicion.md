@@ -84,3 +84,23 @@ Fecha: 02/11/2026. Base: `main` en `9b5cc98` (PR #1–#5 integrados).
 3. Token de API por agente y enlace `agent_runs` ↔ `ingestion_requests` para contar prospectos y duplicados por ejecución.
 4. Permiso `agents.manage` y pantalla para activar/desactivar y ejecutar a pedido, con auditoría.
 5. Notificación de errores repetidos.
+
+## 5. Correcciones de la revisión técnica (02/11/2026)
+
+| Observación de Dirección | Corrección |
+|---|---|
+| Interruptor de `lead_analyst` | `AnalyzeLeadJob` no corre si el agente **no existe** (base nueva antes de `db:seed`) o está **desactivado**. Tampoco se encola (`AnalyzeLeadJob.runnable?`). Vuelve a comprobar el interruptor después de llamar a Prospect AI: si se apagó durante la llamada, descarta el resultado y registra la ejecución como fallida. Las semillas nunca vuelven a encender un agente apagado |
+| Robustez de `AgentRun` | Si no se puede crear el registro, el trabajo no empieza. Si el trabajo falla, se marca la ejecución y se relanza el error **original** aunque marcarla también falle (ese segundo fallo se reporta con `Rails.error`). Si no se puede cerrar una ejecución exitosa, se lanza `AgentRun::TrackingError` |
+| Mensajes de error | Se guardan sanitizados: tokens Bearer/Basic, credenciales en URLs, `clave=valor` de secretos, tokens `eqcrm_`, correos, cadenas largas tipo clave y valores de variables de entorno secretas. Máximo 300 caracteres y 20 mensajes por ejecución. El error que se relanza no se modifica |
+| Prioridad alta en el dashboard | `high_priority_confirmed` (verificado, intención puntuada, sin análisis IA pendiente, sin posible duplicado: los mismos criterios que la ficha usa para no mostrar "estimada") y `high_priority_estimated`. `high_priority_without_opportunity` se conserva como total por compatibilidad. Filtro nuevo `priority_status=confirmed/estimated` en prospectos |
+| Datos de prueba | Columna `leads.synthetic` (falso por defecto, sin reescribir datos) y scopes `Lead.real` / `Lead.test_data`. También se excluyen los títulos con prefijo `[DEMO]` o `[SINTÉTICO]`, la convención que usa el frontend. Todas las métricas del dashboard excluyen esos prospectos y sus oportunidades |
+| Filtros | Los enlaces de las colas conservan país, servicio, fuente y responsable |
+| Autorización efectiva | `Agent.authorize!(clave, acción)` y `agent.authorize!(acción)`: rechaza acciones prohibidas siempre, agentes desactivados y acciones no asignadas. Todo ejecutor debe llamarlo antes de actuar (lo hacen `AnalyzeLeadJob` y el colector de Freelancer). Además, una restricción de PostgreSQL (`agents_no_forbidden_actions`) impide guardar acciones prohibidas aunque se salteen las validaciones |
+
+**Compatibilidad verificada**
+- Puntuación: sin cambios en `CommercialPriority`, `ScoringCriterion`, `RubricVersion`, `rubric.rake` ni Prospect AI. La rúbrica v2 sigue sin activar.
+- Permisos: solo se agrega `agents.read` (administrador, gerente, analista). Ningún permiso existente cambia.
+- Datos históricos: las migraciones solo crean tablas y una columna con valor por defecto; no hay `UPDATE` ni borrados.
+- Migraciones: probadas con `db:rollback STEP=2` y `db:migrate` de nuevo.
+- Dependencias: nokogiri 1.19.6, loofah 2.25.3, rails-html-sanitizer 1.7.2. Suite completa en verde (132 pruebas), RuboCop, Brakeman y bundler-audit sin avisos.
+- Frontend: sin cambios de estilos ni componentes. En el dashboard solo cambian el texto y el dato de una tarjeta y los parámetros de los enlaces de las colas. Con datos `[DEMO]` locales el dashboard muestra cero, como corresponde.

@@ -27,6 +27,10 @@ class Agent < ApplicationRecord
     "spend_money" => "Realizar gastos"
   }.freeze
 
+  # Raised when code tries to act for an agent that is missing, disabled or
+  # not allowed to do that action. Executors must call authorize! first.
+  class NotAuthorized < StandardError; end
+
   has_many :runs, -> { order(started_at: :desc) }, class_name: "AgentRun", dependent: :restrict_with_error
 
   validates :key, presence: true, uniqueness: true, format: { with: /\A[a-z][a-z0-9_]*\z/ }
@@ -37,6 +41,33 @@ class Agent < ApplicationRecord
   validate :actions_are_allowed
 
   scope :ordered, -> { in_order_of(:area, AREAS.keys).order(:name) }
+
+  # Effective authorization for executors. Looks the agent up again so a
+  # switch turned off a second ago is honored. Forbidden actions always fail,
+  # even if a row were edited by hand.
+  def self.authorize!(key, action)
+    agent = find_by(key: key)
+    raise NotAuthorized, "El agente #{key} no está registrado" unless agent
+
+    agent.authorize!(action)
+  end
+
+  def authorize!(action)
+    action = action.to_s
+    raise NotAuthorized, "Acción prohibida para cualquier agente: #{action}" if FORBIDDEN_ACTIONS.key?(action)
+    raise NotAuthorized, "El agente #{key} está desactivado" unless enabled
+    unless ALLOWED_ACTIONS.key?(action) && Array(allowed_actions).include?(action)
+      raise NotAuthorized, "El agente #{key} no tiene permitido: #{action}"
+    end
+
+    self
+  end
+
+  def allowed_to?(action)
+    authorize!(action) && true
+  rescue NotAuthorized
+    false
+  end
 
   def area_name = AREAS.fetch(area, area)
   def last_run = runs.first

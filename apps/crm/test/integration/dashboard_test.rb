@@ -73,4 +73,53 @@ class DashboardCaptureTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "Abierto sin verificar"
     assert_select "a", text: "Descartado sin verificar", count: 0
   end
+
+  test "high priority is split into confirmed and estimated" do
+    confirmed = create_lead(title: "Alta confirmada", commercial_priority: "high", verification_status: "verified", score: 70, score_band: "high")
+    create_lead(title: "Alta sin verificar", commercial_priority: "high", score: 70, score_band: "high")
+    pending = create_lead(title: "Alta con IA pendiente", commercial_priority: "high", verification_status: "verified", score: 70, score_band: "high")
+    pending.ai_analyses.create!(kind: "scoring_proposal", provider: "prospect_ai:job", output: {})
+    create_lead(title: "Alta duplicada A", commercial_priority: "high", verification_status: "verified", score: 70, score_band: "high", author_display_name: "Ana")
+    create_lead(title: "Alta duplicada B", author_display_name: "Ana")
+
+    metrics = DashboardMetrics.new
+    assert_equal 4, metrics.high_priority_without_opportunity
+    assert_equal 1, metrics.high_priority_confirmed
+    assert_equal 3, metrics.high_priority_estimated
+    assert_equal [ confirmed ], Lead.priority_confirmed.where(commercial_priority: "high").to_a
+
+    sign_in create_user
+    get root_path
+    assert_select "dt", text: "Prioridad alta confirmada"
+    assert_select "p", text: /3 con prioridad alta estimada/
+    get leads_path(priority: "high", priority_status: "confirmed")
+    assert_select "a", text: "Alta confirmada"
+    assert_select "a", text: "Alta sin verificar", count: 0
+  end
+
+  test "test and demo leads are never counted" do
+    create_lead(title: "Real")
+    create_lead(title: "[DEMO] Tienda de ejemplo", commercial_priority: "high", verification_status: "verified", score: 80, score_band: "very_high")
+    create_lead(title: "Marcado como prueba", synthetic: true, deadline_at: 1.day.from_now)
+    old = create_lead(title: "Anterior a la columna")
+    old.update_columns(title: "[SINTÉTICO] Anterior a la columna", synthetic: false)
+
+    metrics = DashboardMetrics.new
+    assert_equal 1, metrics.leads_detected
+    assert_equal 1, metrics.to_verify
+    assert_equal 0, metrics.high_priority_without_opportunity
+    assert_equal 0, metrics.closing_soon_count
+    assert Lead.find_by!(title: "[DEMO] Tienda de ejemplo").synthetic
+  end
+
+  test "queues keep the commercial filters" do
+    py = Country.find_by!(iso2: "PY")
+    create_lead(title: "Paraguay", country: py)
+    create_lead(title: "Otro país")
+    assert_equal 1, DashboardMetrics.new(country_id: py.id).to_verify
+
+    sign_in create_user
+    get root_path(country_id: py.id)
+    assert_select "a[href=?]", leads_path(country_id: py.id, verification: "unverified")
+  end
 end

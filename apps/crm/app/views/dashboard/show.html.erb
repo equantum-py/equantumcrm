@@ -12,10 +12,12 @@
 
 <section aria-labelledby="capture-heading" class="mb-8">
   <h2 id="capture-heading" class="mb-3 text-sm font-semibold">Para atender ahora</h2>
+  <% queue_filters = @filters.to_h.slice("country_id", "service_id", "source_id", "owner_id").compact_blank %>
   <% queue = [
-    ["Sin verificar", @metrics.to_verify, leads_path(verification: "unverified"), "Prospectos abiertos que nadie confirmó todavía"],
-    ["Análisis IA por aprobar", @metrics.pending_ai_reviews, (policy(:agent_control).show? ? agent_control_path : leads_path), "Propuestas de agentes que esperan revisión"],
-    ["Prioridad alta sin oportunidad", @metrics.high_priority_without_opportunity, leads_path(priority: "high"), "Listos para convertir en oportunidad"],
+    ["Sin verificar", @metrics.to_verify, leads_path(queue_filters.merge(verification: "unverified")), "Prospectos abiertos que nadie confirmó todavía"],
+    ["Análisis IA por aprobar", @metrics.pending_ai_reviews, (policy(:agent_control).show? ? agent_control_path : leads_path(queue_filters)), "Propuestas de agentes que esperan revisión"],
+    ["Prioridad alta confirmada", @metrics.high_priority_confirmed, leads_path(queue_filters.merge(priority: "high", priority_status: "confirmed")),
+     "Sin oportunidad todavía. Además hay #{@metrics.high_priority_estimated} con prioridad alta estimada, sin confirmar"],
     ["Cierran en 7 días", @metrics.closing_soon_count, nil, "Publicaciones que dejan de recibir ofertas"]
   ] %>
   <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -3,7 +3,7 @@ class LeadsController < ApplicationController
 
   def index
     authorize Lead
-    @filters = params.permit(:q, :status, :country_id, :source_id, :service_id, :owner_id, :band, :verification, :priority)
+    @filters = params.permit(:q, :status, :country_id, :source_id, :service_id, :owner_id, :band, :verification, :priority, :priority_status)
     @leads = Lead.filter(@filters).includes(:source, :country, :services, :owner)
       .order(Arel.sql("leads.score DESC NULLS LAST"), detected_at: :desc).limit(200)
   end
@@ -45,7 +45,7 @@ class LeadsController < ApplicationController
       end
     end
     @lead.refresh_priority!
-    AnalyzeLeadJob.perform_later(@lead) if analysis_output.nil? && ProspectAiClient.configured?
+    AnalyzeLeadJob.perform_later(@lead) if analysis_output.nil? && AnalyzeLeadJob.runnable?
     redirect_to @lead, notice: analysis_output ? "Prospecto registrado. Revisá el análisis propuesto." : "Prospecto registrado."
   rescue ActiveRecord::RecordInvalid
     render :new, status: :unprocessable_content
