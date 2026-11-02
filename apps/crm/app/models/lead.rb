@@ -46,6 +46,8 @@ class Lead < ApplicationRecord
     scope = scope.where(owner_id: params[:owner_id]) if params[:owner_id].present?
     scope = scope.joins(:lead_services).where(lead_services: { service_id: params[:service_id] }) if params[:service_id].present?
     scope = scope.where(score_band: params[:band]) if params[:band].present?
+    scope = scope.where(commercial_priority: params[:priority]).where.not(status: %w[discarded converted]) if params[:priority].present?
+    scope = scope.where(verification_status: params[:verification]).where.not(status: %w[discarded converted]) if params[:verification].present?
     if params[:q].present?
       term = "%#{sanitize_sql_like(params[:q].strip)}%"
       scope = scope.where("leads.title ILIKE :t OR leads.need_summary ILIKE :t OR leads.original_url ILIKE :t", t: term)

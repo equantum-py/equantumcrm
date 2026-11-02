@@ -12,3 +12,4 @@
 | 07 | [Prueba de captación](07-prueba-de-captacion.md) | Procedimiento de las 10 oportunidades |
 | 08 | [Plan de implementación](08-plan-de-implementacion.md) | Fases, paralelismo, riesgos |
 | 09 | [Captura rápida](09-captura-rapida.md) | Procedimiento para registrar publicaciones encontradas a mano |
+| 10 | [Auditoría y transición a eQuantum ARM](10-arm-auditoria-y-transicion.md) | Fase 05: auditoría, plan CRM → ARM, diseño de Agent Control y lo que falta para agentes operativos |

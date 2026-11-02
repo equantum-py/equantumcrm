@@ -32,6 +32,29 @@ module ApplicationHelper
   RATE_UNITS = { "project" => "Por proyecto", "hour" => "Por hora", "month" => "Mensual" }.freeze
   CURRENCIES = %w[PYG CLP COP EUR USD].freeze
 
+  AGENT_STATES = {
+    disabled: [ "Desactivado", "bg-slate-100 text-slate-600 ring-slate-500/20" ],
+    not_implemented: [ "Diseñado, sin implementar", "bg-amber-50 text-amber-800 ring-amber-600/20" ],
+    manual: [ "Activo por evento o a pedido", "bg-sky-50 text-sky-700 ring-sky-600/20" ],
+    scheduled: [ "Programado", "bg-emerald-50 text-emerald-700 ring-emerald-600/20" ]
+  }.freeze
+  RUN_STATUSES = {
+    "running" => [ "En curso", "bg-sky-50 text-sky-700 ring-sky-600/20" ],
+    "succeeded" => [ "Completada", "bg-emerald-50 text-emerald-700 ring-emerald-600/20" ],
+    "failed" => [ "Con error", "bg-red-50 text-red-700 ring-red-600/20" ],
+    "skipped" => [ "Omitida", "bg-slate-100 text-slate-600 ring-slate-500/20" ]
+  }.freeze
+  RUN_TRIGGERS = { "manual" => "Manual", "scheduled" => "Programada", "event" => "Por evento", "api" => "API" }.freeze
+
+  def agent_state_badge(agent) = badge(*AGENT_STATES.fetch(agent.operating_state))
+  def run_status_badge(status) = badge(*RUN_STATUSES.fetch(status, [ status, "" ]))
+
+  def duration_label(seconds)
+    return "—" unless seconds
+
+    seconds < 60 ? "#{seconds.round(1)} s" : "#{(seconds / 60).floor} min #{(seconds % 60).round} s"
+  end
+
   def badge(label, classes)
     tag.span(label, class: "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap #{classes}")
   end
@@ -75,6 +98,7 @@ module ApplicationHelper
     list: "M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z",
     plus: "M12 4.5v15m7.5-7.5h-15",
     search: "M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z",
+    cpu: "M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z",
     menu: "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5",
     chart: "M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
   }.freeze

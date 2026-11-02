@@ -59,7 +59,31 @@ class DashboardMetrics
     scope.count
   end
 
+  # Prospecting work queues. They show what is open now, not what happened in
+  # the period, so they ignore the date filter but keep the others.
+  def to_verify = open_leads.where(verification_status: "unverified").count
+  def pending_ai_reviews = AiAnalysis.pending.where(subject_type: "Lead", subject_id: open_leads.select(:id)).count
+  def high_priority_without_opportunity = open_leads.where(commercial_priority: "high").where.missing(:opportunity).count
+
+  def closing_soon(limit: 5)
+    open_leads.where(listing_closed: false, deadline_at: Time.current..7.days.from_now).order(:deadline_at).limit(limit)
+  end
+
+  def closing_soon_count = open_leads.where(listing_closed: false, deadline_at: Time.current..7.days.from_now).count
+
+  # Leads captured in the period by channel (manual capture, API, Skill).
+  def leads_by_channel = leads.group(:created_via).count
+
   private
+    def open_leads
+      scope = Lead.where.not(status: %w[discarded converted])
+      scope = scope.where(country_id: @country_id) if @country_id
+      scope = scope.where(source_id: @source_id) if @source_id
+      scope = scope.where(owner_id: @owner_id) if @owner_id
+      scope = scope.where(id: LeadService.where(service_id: @service_id).select(:lead_id)) if @service_id
+      scope
+    end
+
     def parse_date(value)
       Date.iso8601(value) if value.present?
     rescue Date::Error

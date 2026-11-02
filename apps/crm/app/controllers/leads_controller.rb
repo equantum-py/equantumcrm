@@ -3,7 +3,7 @@ class LeadsController < ApplicationController
 
   def index
     authorize Lead
-    @filters = params.permit(:q, :status, :country_id, :source_id, :service_id, :owner_id, :band)
+    @filters = params.permit(:q, :status, :country_id, :source_id, :service_id, :owner_id, :band, :verification, :priority)
     @leads = Lead.filter(@filters).includes(:source, :country, :services, :owner)
       .order(Arel.sql("leads.score DESC NULLS LAST"), detected_at: :desc).limit(200)
   end
