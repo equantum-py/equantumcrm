@@ -5,10 +5,10 @@
 <%= form_with url: root_path, method: :get, class: "mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6", data: { turbo_action: "advance" } do |f| %>
   <label><span class="sr-only">Desde</span><%= f.date_field :from, value: @metrics.from, class: ApplicationHelper::INPUT_CLASS, onchange: "this.form.requestSubmit()" %></label>
   <label><span class="sr-only">Hasta</span><%= f.date_field :to, value: @metrics.to, class: ApplicationHelper::INPUT_CLASS, onchange: "this.form.requestSubmit()" %></label>
-  <%= render "shared/filter_select", name: :country_id, label: "Todos los países", options: options_for_countries, value: @filters[:country_id] %>
-  <%= render "shared/filter_select", name: :service_id, label: "Todos los servicios", options: options_for_services, value: @filters[:service_id] %>
-  <%= render "shared/filter_select", name: :source_id, label: "Todas las fuentes", options: options_for_sources, value: @filters[:source_id] %>
-  <%= render "shared/filter_select", name: :owner_id, label: "Todos los responsables", options: options_for_users, value: @filters[:owner_id] %>
+  <%= render "shared/filter_select", name: :country_id, label: "País: todos", options: options_for_countries, value: @filters[:country_id] %>
+  <%= render "shared/filter_select", name: :service_id, label: "Servicio: todos", options: options_for_services, value: @filters[:service_id] %>
+  <%= render "shared/filter_select", name: :source_id, label: "Fuente: todas", options: options_for_sources, value: @filters[:source_id] %>
+  <%= render "shared/filter_select", name: :owner_id, label: "Responsable", options: options_for_users, value: @filters[:owner_id] %>
 <% end %>
 
 <% kpis = [

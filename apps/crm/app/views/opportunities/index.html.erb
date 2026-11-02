@@ -13,9 +13,9 @@
 <%= form_with url: opportunities_path, method: :get, class: "mb-4 grid grid-cols-2 gap-2 md:grid-cols-4", data: { turbo_action: "advance" } do |f| %>
   <%= hidden_field_tag :view, @view %>
   <%= f.search_field :q, value: @filters[:q], placeholder: "Buscar oportunidad o empresa…", class: ApplicationHelper::INPUT_CLASS, "aria-label": "Buscar" %>
-  <%= render "shared/filter_select", name: :owner_id, label: "Todos los responsables", options: options_for_users, value: @filters[:owner_id] %>
-  <%= render "shared/filter_select", name: :country_id, label: "Todos los países", options: options_for_countries, value: @filters[:country_id] %>
-  <%= render "shared/filter_select", name: :service_id, label: "Todos los servicios", options: options_for_services, value: @filters[:service_id] %>
+  <%= render "shared/filter_select", name: :owner_id, label: "Responsable", options: options_for_users, value: @filters[:owner_id] %>
+  <%= render "shared/filter_select", name: :country_id, label: "País: todos", options: options_for_countries, value: @filters[:country_id] %>
+  <%= render "shared/filter_select", name: :service_id, label: "Servicio: todos", options: options_for_services, value: @filters[:service_id] %>
 <% end %>
 
 <% if @view == "kanban" %>

@@ -28,8 +28,14 @@ El workflow independiente `ARM frontend visual validation` crea una base Postgre
 
 ## Coordinación
 
-Rama: `frontend/arm-premium-v1`, basada en main. El PR #6 de Claude agrega una prueba del piloto; no se modifica. Posibles puntos compartidos futuros: layout, dashboard y ficha de prospecto si Claude añade módulos o nuevos estados. Integrar esos contratos luego de revisar ambos diffs. No fusionar ni publicar automáticamente.
+Rama: `frontend/arm-premium-v1`, basada en main. El PR #6 de Claude agrega una prueba del piloto; no se modifica. Durante la implementación apareció el PR #7 (`claude/project-thread-cgqaab`, `69a09ff`) con Agent Control y evolución ARM. Hay superposición concreta en `views/dashboard/show.html.erb`, `views/layouts/application.html.erb` y `views/layouts/auth.html.erb`; además cambia el contrato de `DashboardMetrics`. Se detiene exclusivamente la integración de esas partes: no se fusiona, no se incorpora su backend ni se reescribe su rama. Ambos PR quedan aislados para una integración coordinada que conserve Agent Control y los cálculos nuevos. No fusionar ni publicar automáticamente.
 
 ## Siguiente iteración
 
 Agregar, mediante el trabajo de backend coordinado con Claude, clasificación estructurada de registros sintéticos, propuestas pendientes y metadatos reales de ejecución de agentes. Migrar filtros locales a consultas del servidor cuando exista paginación. Revisar índices de consultas de dashboard si crece el volumen. Mantener el máximo de 60 puntos del gráfico y los límites de listas.
+
+## Resultados de la primera ejecución
+
+Commit `8c3c0f9`: suite Rails **107 pruebas, 413 aserciones, 0 fallos, 0 errores**. RuboCop y Brakeman correctos. Tailwind compila. La prueba visual completó 42 combinaciones sin overflow general y produjo 42 capturas; falló después por buscar el botón por aria-label con la configuración predeterminada de Capybara. Se corrige el selector y se vuelve a validar la navegación.
+
+El job de seguridad falla en `bundler-audit` por dependencias ya presentes en main: Loofah 2.25.2 Nokogiri 1.19.4 y rails-html-sanitizer 1.7.1. El lockfile se conserva íntegro; no se silencian avisos ni se cambian dependencias desde este PR de frontend. Corrección coordinada de dependencias: Loofah >= 2.25.3 Nokogiri >= 1.19.5 y rails-html-sanitizer >= 1.7.2 según la salida del auditor. Ver CRM Actions del PR #8 antes de integrar.

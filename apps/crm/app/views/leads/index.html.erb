@@ -5,12 +5,12 @@
 
 <%= form_with url: leads_path, method: :get, class: "mb-4 grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7", data: { turbo_action: "advance" } do |f| %>
   <%= f.search_field :q, value: @filters[:q], placeholder: "Buscar…", class: "#{ApplicationHelper::INPUT_CLASS} col-span-2 md:col-span-1", "aria-label": "Buscar prospectos" %>
-  <%= render "shared/filter_select", name: :status, label: "Todos los estados", options: ApplicationHelper::LEAD_STATUS.map { |k, (l, _)| [l, k] }, value: @filters[:status] %>
-  <%= render "shared/filter_select", name: :band, label: "Todas las bandas", options: ApplicationHelper::BANDS.map { |k, (l, _)| [l, k] }, value: @filters[:band] %>
-  <%= render "shared/filter_select", name: :country_id, label: "Todos los países", options: options_for_countries, value: @filters[:country_id] %>
-  <%= render "shared/filter_select", name: :service_id, label: "Todos los servicios", options: options_for_services, value: @filters[:service_id] %>
-  <%= render "shared/filter_select", name: :source_id, label: "Todas las fuentes", options: options_for_sources, value: @filters[:source_id] %>
-  <%= render "shared/filter_select", name: :owner_id, label: "Todos los responsables", options: options_for_users, value: @filters[:owner_id] %>
+  <%= render "shared/filter_select", name: :status, label: "Estado: todos", options: ApplicationHelper::LEAD_STATUS.map { |k, (l, _)| [l, k] }, value: @filters[:status] %>
+  <%= render "shared/filter_select", name: :band, label: "Intención: todas", options: ApplicationHelper::BANDS.map { |k, (l, _)| [l, k] }, value: @filters[:band] %>
+  <%= render "shared/filter_select", name: :country_id, label: "País: todos", options: options_for_countries, value: @filters[:country_id] %>
+  <%= render "shared/filter_select", name: :service_id, label: "Servicio: todos", options: options_for_services, value: @filters[:service_id] %>
+  <%= render "shared/filter_select", name: :source_id, label: "Fuente: todas", options: options_for_sources, value: @filters[:source_id] %>
+  <%= render "shared/filter_select", name: :owner_id, label: "Responsable", options: options_for_users, value: @filters[:owner_id] %>
 <% end %>
 
 <div class="arm-list-tools">

@@ -42,6 +42,7 @@ begin
     session.current_window.resize_to(width, 1000)
     pages.each do |name, path|
       session.visit(path)
+      raise "Wrong viewport width" unless session.evaluate_script("window.innerWidth") == width
       raise "Missing page #{name}" unless session.has_css?("main h1")
       overflow = session.evaluate_script("document.documentElement.scrollWidth > window.innerWidth + 1")
       raise "Page overflow: #{name} at #{width}px" if overflow
@@ -50,12 +51,22 @@ begin
   end
   session.current_window.resize_to(390, 900)
   session.visit "/leads"
-  session.click_button "Abrir menú"
+  session.find("button[aria-label='Abrir menú']").click
   raise "Drawer did not open" unless session.has_css?("[role='dialog'][aria-modal='true']")
   session.save_screenshot(output.join("navigation-390.png"))
   session.find("#primary-navigation a", text: "Dashboard", exact_text: true).click
   raise "Drawer did not close" unless session.has_css?("button[aria-expanded='false']")
-  puts "PASS: 42 page/viewport checks, mobile navigation, 43 screenshots"
+  session.visit "/leads"
+  session.find("select[data-records-target='verification']").select("Verificado")
+  raise "Verification filter failed" unless session.has_css?("[data-records-target='count']", text: "0")
+  raise "Missing filter empty state" unless session.has_text?("No hay registros cargados con esta verificación.")
+  session.find("select[data-records-target='verification']").select("Todas")
+  raise "Filter reset failed" unless session.has_link?(lead.title)
+  session.find("select[data-records-target='sort']").select("Nombre")
+  session.find("button[aria-label='Abrir menú']").click
+  session.find("#primary-navigation").send_keys(:escape)
+  raise "Escape did not close drawer" unless session.has_css?("button[aria-expanded='false']")
+  puts "PASS: verification filter, reset, sort, Escape; 42 page/viewport checks, mobile navigation, 43 screenshots"
 ensure
   session.driver.quit
 end
