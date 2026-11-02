@@ -20,6 +20,10 @@ class Opportunity < ApplicationRecord
   validates :lead_id, uniqueness: { allow_nil: true }
 
   scope :open, -> { joins(:pipeline_stage).where(pipeline_stages: { kind: "open" }) }
+  # Opportunities born from test or demo leads (Lead.test_data). Kept for
+  # validation and audit, never counted as commercial results.
+  scope :test_data, -> { where(lead_id: Lead.test_data.select(:id)) }
+  scope :real, -> { where(lead_id: nil).or(where.not(lead_id: Lead.test_data.select(:id))) }
 
   def self.filter(params)
     scope = all

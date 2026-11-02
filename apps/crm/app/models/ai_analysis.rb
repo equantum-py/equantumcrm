@@ -10,6 +10,9 @@ class AiAnalysis < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
 
   scope :pending, -> { where(status: "pending_review") }
+  # Analyses of real leads only (excludes Lead.test_data). Used by the
+  # commercial queues; the records themselves are kept for audit.
+  scope :on_real_leads, -> { where(subject_type: "Lead", subject_id: Lead.real.select(:id)) }
 
   def criteria = Array(output["criteria"])
   def service_keys = Array(output["services"])

@@ -1,6 +1,6 @@
 # eQuantum ARM · Frontend V1 integrado
 
-Base incorporada: `origin/main` en `f713c8312112f558062dd9061894e38c693ccfa2`, con PR #7. Misma rama `frontend/arm-premium-v1`, PR #8 en borrador. Sin despliegue ni fusión del PR #8.
+Base incorporada: `origin/main` en `ad9bfae5467bec9c3f0c1d0707792b4fc2006edc`, con PR #7 y PR #10. Misma rama `frontend/arm-premium-v1`, PR #8 en borrador. Sin despliegue ni fusión del PR #8.
 
 ## Conflictos y presentación
 
@@ -20,9 +20,13 @@ La exclusión de sintéticos de captación, series, distribuciones y oportunidad
 
 Se mantiene el controlador, política, modelos y estados de Claude. Solo cambia la presentación: indicadores premium, tarjetas de agentes y tablas adaptadas a mobile. “Habilitados” describe el interruptor de permiso; no equivale a un agente autónomo o programado. No hay acciones nuevas que activen agentes o ejecuciones. Se conservan acciones permitidas, límites, última ejecución, origen, fuente, resultados, errores y pendientes.
 
-## Límite coordinado con Claude
+## Exclusión canónica integrada · PR #10
 
-La exclusión de sintéticos de métricas de actividades y pendientes de Agent Control sigue siendo responsabilidad de la corrección independiente de Claude. No se agregan filtros temporales en vistas/helpers/controladores para ocultarlos. Las lecturas nuevas de actividades conservan la semántica vigente (pendientes, por responsable). No se afirma exclusión global de datos de prueba ni aprobación final de esos indicadores antes de incorporar la corrección correspondiente.
+El PR #10 se incorpora íntegramente desde main. La combinación de `dashboard_metrics.rb` no produjo conflicto textual; se conservan los cambios de contactos distintos por tipo + id, `Opportunity.real`, `Activity.real`, `AiAnalysis.on_real_leads` y las lecturas corregidas de Agent Control. No se copia su lógica a helpers o vistas.
+
+La única adaptación de datos sobre ese contrato es `DashboardMetrics#pending_activities`: usa **`Activity.real.pending`**, manteniendo el filtro por responsable. Tanto `upcoming_activities_count` como `pending_activities_preview` dependen de ese mismo método. El contador conserva actividades pendientes con fecha futura; la lista conserva el orden cronológico, vencidas/sin fecha, límite de seis y precarga de asociaciones.
+
+Dos pruebas específicas verifican ambos indicadores con actividades de prospectos reales, oportunidades reales, empresas, prospectos sintéticos explícitos y con prefijo heredado, oportunidades originadas en ellos, completadas y otros responsables. La prueba del navegador verifica además el contador real y que el seguimiento sintético no aparezca en la lista del dashboard. No queda pendiente la exclusión de sintéticos del PR #10.
 
 ## Validación
 
@@ -38,4 +42,4 @@ El workflow visual exige `ARM_INTEGRATION_REQUIRED=1`. Incluye siete pantallas y
 - Prospectos y pipeline: anotaciones de presentación en controladores, vistas y filtros compartidos; simplificación del controlador Stimulus de ordenamiento.
 - Pruebas: regresiones de integración, aserciones de presentación, runner y workflow visual.
 
-Los modelos, migraciones, configuración de agentes y actualizaciones de dependencias se heredan íntegros de main. No se reimplementa ni se modifica la corrección que prepara Claude.
+Los modelos, migraciones, configuración de agentes y actualizaciones de dependencias se heredan íntegros de main. Se conserva íntegra la corrección de Claude y se consume su contrato canónico.

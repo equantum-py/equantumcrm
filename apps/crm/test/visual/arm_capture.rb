@@ -26,6 +26,8 @@ confirmed = Lead.create!(title: "Solicitud de tienda online", source: lead.sourc
 estimated = Lead.create!(title: "Rediseño web por revisar", source: lead.source, country: company.country, owner: user,
   need_summary: "Rediseño web exclusivo del laboratorio visual.", commercial_priority: "high", deadline_at: 2.days.from_now,
   detected_at: 1.day.ago)
+real_activity = Activity.create!(title: "Revisar alcance comercial", kind: "follow_up", subject: confirmed,
+  owner: user, due_at: 1.day.from_now)
 estimated.ai_analyses.create!(kind: "scoring_proposal", provider: "prospect_ai:job", output: {})
 AgentRun.create!(agent: Agent.find_by!(key: "lead_analyst"), trigger: "manual", subject: estimated,
   triggered_by: user, started_at: 2.minutes.ago, finished_at: 1.minute.ago, status: "succeeded",
@@ -148,6 +150,11 @@ begin
   raise "Reduced motion ignored" unless duration.split(",").all? { |value| value.strip == "0s" }
 
   raise "Agent Control missing from integrated capture" unless pages.key?(:agent_control)
+  session.visit "/"
+  raise "Upcoming activity count includes synthetic data" unless session.has_css?(".arm-period-metrics .arm-metric:last-child dd", text: "1", exact_text: true)
+  follow_ups = session.find("section", text: "Seguimientos pendientes")
+  raise "Real follow-up missing" unless follow_ups.has_text?(real_activity.title)
+  raise "Synthetic follow-up leaked" if follow_ups.has_text?("[DEMO] Revisar alcance", wait: 0)
   session.visit "/agent_control"
   raise "Run history missing" unless session.has_text?("Historial de laboratorio")
   session.visit "/?country_id=#{company.country_id}"

@@ -1,5 +1,6 @@
 # Commercial KPIs computed from real records. Empty data yields zeros.
-# Test or demo leads (Lead.test_data) and their opportunities are never counted.
+# Test or demo data is never counted: leads (Lead.real), their opportunities
+# (Opportunity.real) and activities on either (Activity.real).
 class DashboardMetrics
   attr_reader :from, :to
 
@@ -20,7 +21,9 @@ class DashboardMetrics
   def pending_contact = opportunities_in_stage("Pendiente de contacto").count
 
   def contacted
-    activities.where(kind: %w[call meeting follow_up]).where.not(completed_at: nil).distinct.count(:subject_id)
+    # Distinct per subject (type + id): a lead and an opportunity can share an id.
+    activities.where(kind: %w[call meeting follow_up]).where.not(completed_at: nil)
+      .distinct.count(Arel.sql("(activities.subject_type, activities.subject_id)"))
   end
 
   def meetings = activities.where(kind: "meeting").count
@@ -55,7 +58,7 @@ class DashboardMetrics
   end
 
   def overdue_activities
-    scope = Activity.overdue
+    scope = Activity.real.overdue
     scope = scope.where(owner_id: @owner_id) if @owner_id
     scope.count
   end
@@ -117,10 +120,9 @@ class DashboardMetrics
   end
 
   private
-    # Same owner-only pending activity semantics as the existing dashboard.
-    # Synthetic exclusion is coordinated separately with Claude; no UI workaround.
+    # Reuse the canonical data-layer scope for both presentation indicators.
     def pending_activities
-      scope = Activity.pending
+      scope = Activity.real.pending
       scope = scope.where(owner_id: @owner_id) if @owner_id
       scope
     end
@@ -152,7 +154,7 @@ class DashboardMetrics
     end
 
     def base_opportunities
-      scope = Opportunity.where(lead_id: nil).or(Opportunity.where.not(lead_id: Lead.test_data.select(:id)))
+      scope = Opportunity.real
       scope = scope.where(country_id: @country_id) if @country_id
       scope = scope.where(owner_id: @owner_id) if @owner_id
       scope = scope.where(id: OpportunityService.where(service_id: @service_id).select(:opportunity_id)) if @service_id
@@ -175,7 +177,7 @@ class DashboardMetrics
     end
 
     def activities
-      scope = Activity.where(created_at: period)
+      scope = Activity.real.where(created_at: period)
       scope = scope.where(owner_id: @owner_id) if @owner_id
       scope
     end
