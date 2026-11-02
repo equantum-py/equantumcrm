@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -31,6 +31,52 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
     t.index ["owner_id"], name: "index_activities_on_owner_id"
     t.index ["subject_type", "subject_id"], name: "index_activities_on_subject"
     t.check_constraint "kind::text = ANY (ARRAY['call'::character varying::text, 'meeting'::character varying::text, 'task'::character varying::text, 'follow_up'::character varying::text, 'reminder'::character varying::text, 'note'::character varying::text])", name: "activities_kind"
+  end
+
+  create_table "agent_runs", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.string "status", default: "running", null: false
+    t.string "trigger", default: "manual", null: false
+    t.datetime "started_at", null: false
+    t.datetime "finished_at"
+    t.string "source_key"
+    t.string "source_url"
+    t.text "summary"
+    t.integer "leads_detected", default: 0, null: false
+    t.integer "duplicates", default: 0, null: false
+    t.integer "errors_count", default: 0, null: false
+    t.jsonb "error_messages", default: [], null: false
+    t.integer "pending_approvals", default: 0, null: false
+    t.string "subject_type"
+    t.bigint "subject_id"
+    t.bigint "triggered_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id", "started_at"], name: "index_agent_runs_on_agent_id_and_started_at"
+    t.index ["agent_id"], name: "index_agent_runs_on_agent_id"
+    t.index ["status"], name: "index_agent_runs_on_status"
+    t.index ["subject_type", "subject_id"], name: "index_agent_runs_on_subject"
+    t.index ["triggered_by_id"], name: "index_agent_runs_on_triggered_by_id"
+    t.check_constraint "status::text = ANY (ARRAY['running'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'skipped'::character varying]::text[])", name: "agent_runs_status"
+    t.check_constraint "trigger::text = ANY (ARRAY['manual'::character varying, 'scheduled'::character varying, 'event'::character varying, 'api'::character varying]::text[])", name: "agent_runs_trigger"
+  end
+
+  create_table "agents", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "name", null: false
+    t.string "area", null: false
+    t.text "description"
+    t.boolean "enabled", default: false, null: false
+    t.string "execution_mode", default: "manual", null: false
+    t.string "schedule"
+    t.jsonb "allowed_actions", default: [], null: false
+    t.string "implemented_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_agents_on_key", unique: true
+    t.check_constraint "area::text = ANY (ARRAY['prospect_ai'::character varying, 'sales_intelligence'::character varying, 'sales_agent'::character varying, 'relationship_hub'::character varying]::text[])", name: "agents_area"
+    t.check_constraint "execution_mode::text = ANY (ARRAY['manual'::character varying, 'scheduled'::character varying]::text[])", name: "agents_execution_mode"
+    t.check_constraint "jsonb_typeof(allowed_actions) = 'array'::text AND NOT allowed_actions ?| ARRAY['send_proposals'::text, 'contact_clients'::text, 'commit_prices'::text, 'hire_services'::text, 'spend_money'::text]", name: "agents_no_forbidden_actions"
   end
 
   create_table "ai_analyses", force: :cascade do |t|
@@ -229,6 +275,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
     t.decimal "priority_confidence", precision: 3, scale: 2
     t.jsonb "priority_breakdown", default: {}, null: false
     t.datetime "priority_calculated_at"
+    t.boolean "synthetic", default: false, null: false
     t.index ["commercial_priority"], name: "index_leads_on_commercial_priority"
     t.index ["company_id"], name: "index_leads_on_company_id"
     t.index ["country_id", "detected_at"], name: "index_leads_on_country_id_and_detected_at"
@@ -238,8 +285,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
     t.index ["source_id", "detected_at"], name: "index_leads_on_source_id_and_detected_at"
     t.index ["source_id"], name: "index_leads_on_source_id"
     t.index ["status", "score"], name: "index_leads_on_status_and_score"
+    t.index ["synthetic"], name: "index_leads_on_synthetic", where: "synthetic"
     t.check_constraint "budget_min_cents IS NULL OR budget_max_cents IS NULL OR budget_max_cents >= budget_min_cents", name: "leads_budget_range"
-    t.check_constraint "commercial_priority::text = ANY (ARRAY['high'::character varying, 'medium'::character varying, 'low'::character varying, 'not_recommended'::character varying]::text[])", name: "leads_commercial_priority"
+    t.check_constraint "commercial_priority::text = ANY (ARRAY['high'::character varying::text, 'medium'::character varying::text, 'low'::character varying::text, 'not_recommended'::character varying::text])", name: "leads_commercial_priority"
     t.check_constraint "competition_count IS NULL OR competition_count >= 0", name: "leads_competition_count"
     t.check_constraint "created_via::text = ANY (ARRAY['manual'::character varying::text, 'api'::character varying::text, 'skill'::character varying::text])", name: "leads_created_via"
     t.check_constraint "estimated_hours IS NULL OR estimated_hours > 0", name: "leads_estimated_hours"
@@ -334,7 +382,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
     t.index ["approved_by_id"], name: "index_rubric_versions_on_approved_by_id"
     t.index ["status"], name: "index_rubric_versions_single_active", unique: true, where: "((status)::text = 'active'::text)"
     t.index ["version"], name: "index_rubric_versions_on_version", unique: true
-    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'active'::character varying, 'retired'::character varying]::text[])", name: "rubric_versions_status"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'active'::character varying::text, 'retired'::character varying::text])", name: "rubric_versions_status"
   end
 
   create_table "scoring_criteria", force: :cascade do |t|
@@ -373,7 +421,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
     t.index ["service_id"], name: "index_service_rates_on_service_id"
     t.check_constraint "min_cents >= 0 AND max_cents >= min_cents", name: "service_rates_range"
     t.check_constraint "status::text <> 'approved'::text OR approved_by_id IS NOT NULL AND approved_at IS NOT NULL", name: "service_rates_approval"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'retired'::character varying]::text[])", name: "service_rates_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'approved'::character varying::text, 'retired'::character varying::text])", name: "service_rates_status"
     t.check_constraint "unit::text = ANY (ARRAY['project'::character varying::text, 'hour'::character varying::text, 'month'::character varying::text])", name: "service_rates_unit"
     t.check_constraint "valid_until IS NULL OR valid_until >= valid_from", name: "service_rates_validity"
   end
@@ -387,7 +435,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
     t.string "value_tier", default: "medium", null: false
     t.boolean "recurring", default: false, null: false
     t.index ["key"], name: "index_services_on_key", unique: true
-    t.check_constraint "value_tier::text = ANY (ARRAY['high'::character varying, 'medium'::character varying, 'low'::character varying]::text[])", name: "services_value_tier"
+    t.check_constraint "value_tier::text = ANY (ARRAY['high'::character varying::text, 'medium'::character varying::text, 'low'::character varying::text])", name: "services_value_tier"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -422,6 +470,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_220000) do
   end
 
   add_foreign_key "activities", "users", column: "owner_id"
+  add_foreign_key "agent_runs", "agents"
+  add_foreign_key "agent_runs", "users", column: "triggered_by_id"
   add_foreign_key "ai_analyses", "users", column: "reviewed_by_id"
   add_foreign_key "audit_logs", "api_clients"
   add_foreign_key "audit_logs", "users", column: "actor_id"

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-50">
   <head>
-    <title><%= [content_for(:title), "eQuantum CRM"].compact.join(" · ") %></title>
+    <title><%= [content_for(:title), "eQuantum ARM"].compact.join(" · ") %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="application-name" content="eQuantum CRM">
+    <meta name="application-name" content="eQuantum ARM">
+    <meta name="description" content="eQuantum ARM · Agentic Relationship Management">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -18,14 +19,18 @@
       <div class="flex h-16 items-center gap-2 border-b border-slate-200 px-5">
         <span class="grid size-8 place-items-center rounded-md bg-indigo-600 text-sm font-bold text-white">eQ</span>
         <div class="leading-tight">
-          <p class="text-sm font-semibold">eQuantum CRM</p>
-          <p class="text-xs text-slate-500">Prospect AI</p>
+          <p class="text-sm font-semibold">eQuantum ARM</p>
+          <p class="text-xs text-slate-500">Agentic Relationship Management</p>
         </div>
       </div>
       <nav class="flex-1 space-y-1 overflow-y-auto p-3">
-        <%= nav_link "Inicio", root_path, icon: :home, active: current_page?(root_path) %>
+        <%= nav_link "Captación", root_path, icon: :home, active: current_page?(root_path) %>
         <% if policy(Lead).index? %>
+          <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Prospect AI</p>
           <%= nav_link "Prospectos", leads_path, icon: :spark %>
+        <% end %>
+        <% if policy(Opportunity).index? || policy(Company).index? || policy(Activity).index? %>
+          <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Relationship Hub</p>
         <% end %>
         <% if policy(Opportunity).index? %>
           <%= nav_link "Pipeline", opportunities_path, icon: :funnel %>
@@ -35,6 +40,11 @@
         <% end %>
         <% if policy(Activity).index? %>
           <%= nav_link "Actividades", activities_path, icon: :check %>
+        <% end %>
+
+        <% if policy(:agent_control).show? %>
+          <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Agentes</p>
+          <%= nav_link "Agent Control", agent_control_path, icon: :cpu %>
         <% end %>
 
         <% if policy(ServiceRate).index? || policy(User).index? || policy(AuditLog).index? %>

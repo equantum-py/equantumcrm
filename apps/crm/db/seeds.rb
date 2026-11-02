@@ -15,14 +15,15 @@ permissions = {
   "rates.manage" => "Cargar y editar tarifas",
   "rates.approve" => "Aprobar tarifas",
   "users.manage" => "Administrar usuarios",
-  "audit.read" => "Ver registro de auditoría"
+  "audit.read" => "Ver registro de auditoría",
+  "agents.read" => "Ver Agent Control"
 }
 
 role_permissions = {
   "admin" => [ "Administrador", permissions.keys ],
   "manager" => [ "Gerente comercial", permissions.keys - %w[users.manage] ],
   "sales" => [ "Ejecutivo comercial", %w[dashboard.read leads.read leads.write companies.read companies.write pipeline.read pipeline.write activities.write ai.review rates.read] ],
-  "analyst" => [ "Analista", %w[dashboard.read leads.read leads.write companies.read companies.write pipeline.read activities.write ai.review] ],
+  "analyst" => [ "Analista", %w[dashboard.read leads.read leads.write companies.read companies.write pipeline.read activities.write ai.review agents.read] ],
   "viewer" => [ "Solo lectura", %w[dashboard.read leads.read companies.read pipeline.read] ]
 }
 
@@ -138,4 +139,27 @@ if ENV["ADMIN_EMAIL"].present? && ENV["ADMIN_PASSWORD"].present?
     user.password = ENV["ADMIN_PASSWORD"]
     user.role = Role.find_by!(key: "admin")
   end
+end
+
+# Agent catalog for Agent Control. Only lead_analyst starts enabled, because it
+# wraps AnalyzeLeadJob, which already runs today. Enabling, scheduling or
+# widening any other agent is a decision of Dirección.
+[
+  [ "lead_analyst", "Analista de prospectos", "sales_intelligence",
+    "Pide a Prospect AI una propuesta de servicios, intención y puntaje para un prospecto capturado. El resultado queda pendiente de revisión.",
+    %w[analyze_leads], "AnalyzeLeadJob" ],
+  [ "prospect_scout", "Explorador de oportunidades", "prospect_ai",
+    "Revisará fuentes públicas autorizadas (APIs y datos abiertos) y registrará prospectos sin verificar. Pendiente de la segunda entrega.",
+    %w[read_public_sources ingest_leads], nil ],
+  [ "proposal_drafter", "Redactor de propuestas", "sales_agent",
+    "Preparará borradores de mensajes y propuestas con tarifas aprobadas. Nunca los envía. Pendiente de la segunda entrega.",
+    %w[draft_messages draft_proposals], nil ],
+  [ "follow_up_advisor", "Asesor de seguimiento", "relationship_hub",
+    "Sugerirá el siguiente paso para oportunidades sin actividad reciente. Pendiente de la segunda entrega.",
+    %w[suggest_follow_ups], nil ]
+].each do |key, name, area, description, actions, implemented_by|
+  agent = Agent.find_or_initialize_by(key: key)
+  agent.assign_attributes(name: name, area: area, description: description, allowed_actions: actions, implemented_by: implemented_by)
+  agent.enabled = key == "lead_analyst" if agent.new_record?
+  agent.save!
 end

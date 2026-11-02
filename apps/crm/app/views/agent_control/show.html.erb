@@ -1,0 +1,126 @@
+<% content_for :title, "Agent Control" %>
+<%= render "shared/page_header", title: "Agent Control", subtitle: "Qué agentes existen, qué pueden hacer, qué hicieron y qué espera tu aprobación." %>
+
+<dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
+    <dt class="text-xs font-medium text-slate-500">Agentes activos</dt>
+    <dd class="mt-1 text-2xl font-semibold tabular-nums"><%= @agents.count(&:enabled) %> <span class="text-sm font-normal text-slate-500">de <%= @agents.size %></span></dd>
+  </div>
+  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
+    <dt class="text-xs font-medium text-slate-500">Programados</dt>
+    <dd class="mt-1 text-2xl font-semibold tabular-nums"><%= @agents.count { |a| a.operating_state == :scheduled } %></dd>
+  </div>
+  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
+    <dt class="text-xs font-medium text-slate-500">Esperan aprobación</dt>
+    <dd class="mt-1 text-2xl font-semibold tabular-nums <%= 'text-amber-700' if @pending_analyses.any? %>"><%= @pending_analyses.count %></dd>
+  </div>
+  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
+    <dt class="text-xs font-medium text-slate-500">Ejecuciones con error (7 días)</dt>
+    <dd class="mt-1 text-2xl font-semibold tabular-nums <%= 'text-red-600' if @failed_last_7_days.positive? %>"><%= @failed_last_7_days %></dd>
+  </div>
+</dl>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <section class="lg:col-span-2" aria-labelledby="agents-heading">
+    <h2 id="agents-heading" class="mb-3 text-sm font-semibold">Agentes</h2>
+    <% if @agents.empty? %>
+      <%= render "shared/empty_state", title: "Sin agentes registrados", body: "Ejecutá bin/rails db:seed para cargar el catálogo." %>
+    <% else %>
+      <ul class="space-y-3">
+        <% @agents.each do |agent| %>
+          <% last = @last_runs[agent.id] %>
+          <li class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="text-xs font-medium uppercase tracking-wide text-indigo-600"><%= agent.area_name %></p>
+                <h3 class="font-semibold"><%= agent.name %></h3>
+              </div>
+              <%= agent_state_badge(agent) %>
+            </div>
+            <p class="mt-2 text-sm text-slate-600"><%= agent.description %></p>
+            <div class="mt-3 flex flex-wrap gap-1.5">
+              <% agent.allowed_actions.each do |action| %>
+                <%= badge(Agent::ALLOWED_ACTIONS.fetch(action, action), "bg-slate-50 text-slate-700 ring-slate-300") %>
+              <% end %>
+            </div>
+            <p class="mt-3 text-xs text-slate-500">
+              <% if last %>
+                Última ejecución: <%= datetime_label(last.started_at) %> · <%= ApplicationHelper::RUN_STATUSES.fetch(last.status, [last.status]).first %>
+              <% else %>
+                Sin ejecuciones registradas.
+              <% end %>
+              <% if agent.schedule.present? %> · Frecuencia: <%= agent.schedule %><% end %>
+            </p>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+
+  <aside class="space-y-4">
+    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200" aria-labelledby="pending-heading">
+      <h2 id="pending-heading" class="text-sm font-semibold">Pendientes de aprobación</h2>
+      <% if @pending_preview.any? %>
+        <ul class="mt-3 divide-y divide-slate-100 text-sm">
+          <% @pending_preview.each do |analysis| %>
+            <li class="py-2">
+              <%= link_to analysis.subject.title, lead_path(analysis.subject), class: "font-medium hover:text-indigo-600" %>
+              <p class="text-xs text-slate-500">Análisis de <%= analysis.provider %> · <%= datetime_label(analysis.created_at) %></p>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="mt-2 text-sm text-slate-500">No hay análisis esperando revisión.</p>
+      <% end %>
+      <p class="mt-3 text-xs text-slate-500">Prospectos cargados por agentes sin verificar: <span class="font-medium text-slate-700 tabular-nums"><%= @unverified_from_agents %></span></p>
+    </section>
+
+    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200" aria-labelledby="limits-heading">
+      <h2 id="limits-heading" class="text-sm font-semibold">Límites de seguridad</h2>
+      <p class="mt-1 text-xs text-slate-500">Ningún agente puede hacer esto. El sistema rechaza configurarlo.</p>
+      <ul class="mt-3 space-y-1.5 text-sm">
+        <% Agent::FORBIDDEN_ACTIONS.each_value do |label| %>
+          <li class="flex items-center gap-2 text-slate-700"><span class="size-1.5 rounded-full bg-red-500" aria-hidden="true"></span><%= label %></li>
+        <% end %>
+      </ul>
+    </section>
+  </aside>
+</div>
+
+<section class="mt-6" aria-labelledby="runs-heading">
+  <h2 id="runs-heading" class="mb-3 text-sm font-semibold">Últimas ejecuciones</h2>
+  <% if @runs.empty? %>
+    <%= render "shared/empty_state", title: "Todavía no hay ejecuciones", body: "Cada ejecución registrará agente, fecha, duración, fuente, resultado, prospectos, duplicados, errores y pendientes de aprobación." %>
+  <% else %>
+    <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">Agente</th><th class="px-4 py-3">Inicio</th><th class="px-4 py-3">Duración</th><th class="px-4 py-3">Estado</th>
+              <th class="px-4 py-3 hidden md:table-cell">Origen</th><th class="px-4 py-3 hidden md:table-cell">Fuente</th>
+              <th class="px-4 py-3 text-right">Prospectos</th><th class="px-4 py-3 text-right">Duplicados</th><th class="px-4 py-3 text-right">Errores</th><th class="px-4 py-3 text-right">A aprobar</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% @runs.each do |run| %>
+              <tr class="align-top">
+                <td class="px-4 py-2 font-medium"><%= run.agent.name %><% if run.summary.present? %><p class="text-xs font-normal text-slate-500"><%= run.summary %></p><% end %>
+                  <% if run.error_messages.any? %><p class="text-xs font-normal text-red-700"><%= run.error_messages.last %></p><% end %></td>
+                <td class="px-4 py-2 whitespace-nowrap"><%= datetime_label(run.started_at) %></td>
+                <td class="px-4 py-2 whitespace-nowrap tabular-nums"><%= duration_label(run.duration) %></td>
+                <td class="px-4 py-2"><%= run_status_badge(run.status) %></td>
+                <td class="px-4 py-2 hidden md:table-cell"><%= ApplicationHelper::RUN_TRIGGERS.fetch(run.trigger, run.trigger) %></td>
+                <td class="px-4 py-2 hidden md:table-cell"><%= run.source_key || "—" %></td>
+                <td class="px-4 py-2 text-right tabular-nums"><%= run.leads_detected %></td>
+                <td class="px-4 py-2 text-right tabular-nums"><%= run.duplicates %></td>
+                <td class="px-4 py-2 text-right tabular-nums <%= 'text-red-600' if run.errors_count.positive? %>"><%= run.errors_count %></td>
+                <td class="px-4 py-2 text-right tabular-nums"><%= run.pending_approvals %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+</section>

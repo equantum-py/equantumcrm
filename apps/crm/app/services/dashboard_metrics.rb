@@ -1,4 +1,5 @@
 # Commercial KPIs computed from real records. Empty data yields zeros.
+# Test or demo leads (Lead.test_data) and their opportunities are never counted.
 class DashboardMetrics
   attr_reader :from, :to
 
@@ -59,7 +60,39 @@ class DashboardMetrics
     scope.count
   end
 
+  # Prospecting work queues. They show what is open now, not what happened in
+  # the period, so they ignore the date filter but keep the others.
+  def to_verify = open_leads.where(verification_status: "unverified").count
+  def pending_ai_reviews = AiAnalysis.pending.where(subject_type: "Lead", subject_id: open_leads.select(:id)).count
+
+  # High priority leads without an opportunity, split by whether the priority
+  # is confirmed (Lead.priority_confirmed) or still an estimate. The total is
+  # kept for compatibility: it mixes both and must not read as "ready".
+  def high_priority_without_opportunity = high_priority_open.count
+  def high_priority_confirmed = high_priority_open.priority_confirmed.count
+  def high_priority_estimated = high_priority_without_opportunity - high_priority_confirmed
+
+  def closing_soon(limit: 5)
+    open_leads.where(listing_closed: false, deadline_at: Time.current..7.days.from_now).order(:deadline_at).limit(limit)
+  end
+
+  def closing_soon_count = open_leads.where(listing_closed: false, deadline_at: Time.current..7.days.from_now).count
+
+  # Leads captured in the period by channel (manual capture, API, Skill).
+  def leads_by_channel = leads.group(:created_via).count
+
   private
+    def high_priority_open = open_leads.where(commercial_priority: "high").where.missing(:opportunity)
+
+    def open_leads
+      scope = Lead.real.where.not(status: %w[discarded converted])
+      scope = scope.where(country_id: @country_id) if @country_id
+      scope = scope.where(source_id: @source_id) if @source_id
+      scope = scope.where(owner_id: @owner_id) if @owner_id
+      scope = scope.where(id: LeadService.where(service_id: @service_id).select(:lead_id)) if @service_id
+      scope
+    end
+
     def parse_date(value)
       Date.iso8601(value) if value.present?
     rescue Date::Error
@@ -67,7 +100,7 @@ class DashboardMetrics
     end
 
     def leads
-      scope = Lead.where(detected_at: period)
+      scope = Lead.real.where(detected_at: period)
       scope = scope.where(country_id: @country_id) if @country_id
       scope = scope.where(source_id: @source_id) if @source_id
       scope = scope.where(owner_id: @owner_id) if @owner_id
@@ -76,7 +109,7 @@ class DashboardMetrics
     end
 
     def base_opportunities
-      scope = Opportunity.all
+      scope = Opportunity.where(lead_id: nil).or(Opportunity.where.not(lead_id: Lead.test_data.select(:id)))
       scope = scope.where(country_id: @country_id) if @country_id
       scope = scope.where(owner_id: @owner_id) if @owner_id
       scope = scope.where(id: OpportunityService.where(service_id: @service_id).select(:opportunity_id)) if @service_id
