@@ -21,10 +21,10 @@ Activity.create!(title: "[DEMO] Revisar alcance", kind: "follow_up", subject: le
 # Controlled contract fixtures in the isolated test database. These unflagged
 # rows exercise real-data scopes; they are never created outside Rails.env.test.
 confirmed = Lead.create!(title: "Solicitud de tienda online", source: lead.source, country: company.country, owner: user,
-  need_summary: "Registro exclusivo del laboratorio visual.", verification_status: "verified", score: 80,
+  need_summary: "Solicitud de tienda online exclusiva del laboratorio visual.", verification_status: "verified", score: 80,
   score_band: "high", commercial_priority: "high", detected_at: 2.days.ago)
 estimated = Lead.create!(title: "Rediseño web por revisar", source: lead.source, country: company.country, owner: user,
-  need_summary: "Registro exclusivo del laboratorio visual.", commercial_priority: "high", deadline_at: 2.days.from_now,
+  need_summary: "Rediseño web exclusivo del laboratorio visual.", commercial_priority: "high", deadline_at: 2.days.from_now,
   detected_at: 1.day.ago)
 estimated.ai_analyses.create!(kind: "scoring_proposal", provider: "prospect_ai:job", output: {})
 AgentRun.create!(agent: Agent.find_by!(key: "lead_analyst"), trigger: "manual", subject: estimated,
