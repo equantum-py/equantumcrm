@@ -20,6 +20,7 @@
 
 <% if @view == "kanban" %>
   <% grouped = @opportunities.group_by(&:pipeline_stage_id) %>
+  <% source_leads = policy(Lead).index? ? Lead.where(id: @opportunities.filter_map(&:lead_id)).index_by(&:id) : {} %>
   <div class="arm-kanban" tabindex="0" aria-label="Etapas del pipeline; desplazá para ver más" data-controller="kanban">
     <div class="flex gap-3">
       <% @stages.each do |stage| %>
@@ -30,6 +31,8 @@
             <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-600"><%= stage.name %></h2>
             <span class="text-xs tabular-nums text-slate-500"><%= cards.size %></span>
           </header>
+          <% totals = cards.reject { |card| card.estimated_value_cents.nil? }.group_by(&:currency) %>
+          <% if totals.any? %><p class="px-2 pb-3 text-xs font-medium text-slate-600"><%= totals.map { |currency, records| Money.from_cents(records.sum(&:estimated_value_cents), currency) }.join(" · ") %></p><% end %>
           <div class="min-h-16 space-y-2" data-cards>
             <% if cards.empty? %><p class="arm-column-empty">Sin oportunidades en esta etapa</p><% end %>
             <% cards.each do |o| %>
@@ -37,11 +40,14 @@
                        data-id="<%= o.id %>" data-action="dragstart->kanban#dragstart">
                 <%= link_to o.name, o, class: "block text-sm font-medium leading-snug hover:text-indigo-600" %>
                 <p class="mt-1 truncate text-xs text-slate-500"><%= o.company.trade_name %></p>
+                <% source_lead = source_leads[o.lead_id] %>
+                <% if source_lead&.commercial_priority %><p class="mt-2"><%= priority_badge(source_lead.commercial_priority, estimated: true) %></p><% end %>
                 <p class="arm-section-note"><%= o.services.map(&:name).join(", ").presence || "Servicio por definir" %></p>
                 <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
                   <span><%= o.estimated_value || "Sin valor" %></span>
                   <span title="Días en la etapa"><%= o.days_in_stage %> d · <%= o.owner.name.split.first %></span>
                 </div>
+                <p class="arm-section-note"><%= source_lead&.recommended_action.presence || "Sin próxima acción registrada" %></p>
               </article>
             <% end %>
           </div>

@@ -64,7 +64,7 @@ begin
   raise "Filter reset failed" unless session.has_link?(lead.title)
   session.find("select[data-records-target='sort']").select("Nombre")
   session.find("button[aria-label='Abrir menú']").click
-  session.find("#primary-navigation").send_keys(:escape)
+  session.driver.browser.action.send_keys(:escape).perform
   raise "Escape did not close drawer" unless session.has_css?("button[aria-expanded='false']")
   puts "PASS: verification filter, reset, sort, Escape; 42 page/viewport checks, mobile navigation, 43 screenshots"
 ensure
