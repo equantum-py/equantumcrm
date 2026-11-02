@@ -64,7 +64,7 @@ end
 {
   "facebook" => [ "Facebook", true ], "facebook_group" => [ "Grupo de Facebook", true ], "linkedin" => [ "LinkedIn", true ],
   "workana" => [ "Workana", false ], "upwork" => [ "Upwork", false ], "malt" => [ "Malt", false ],
-  "freelance_other" => [ "Otra plataforma freelance", false ], "google_search" => [ "Búsqueda web", false ],
+  "freelancer" => [ "Freelancer", false ], "freelance_other" => [ "Otra plataforma freelance", false ], "google_search" => [ "Búsqueda web", false ],
   "google_maps" => [ "Google Maps", false ], "shopify_community" => [ "Comunidad Shopify", false ],
   "public_tender" => [ "Licitación pública", false ], "referral" => [ "Referido", false ],
   "website_form" => [ "Formulario web", false ], "manual" => [ "Carga manual", false ]
@@ -149,8 +149,9 @@ end
     "Pide a Prospect AI una propuesta de servicios, intención y puntaje para un prospecto capturado. El resultado queda pendiente de revisión.",
     %w[analyze_leads], "AnalyzeLeadJob" ],
   [ "prospect_scout", "Explorador de oportunidades", "prospect_ai",
-    "Revisará fuentes públicas autorizadas (APIs y datos abiertos) y registrará prospectos sin verificar. Pendiente de la segunda entrega.",
-    %w[read_public_sources ingest_leads], nil ],
+    "Lee proyectos activos de la API pública de Freelancer, conserva los de servicios eQuantum y los registra sin verificar. " \
+    "Solo se ejecuta a mano (bin/rails agents:collect_freelancer); no hay tarea programada.",
+    %w[read_public_sources ingest_leads], "Collectors::Freelancer" ],
   [ "proposal_drafter", "Redactor de propuestas", "sales_agent",
     "Preparará borradores de mensajes y propuestas con tarifas aprobadas. Nunca los envía. Pendiente de la segunda entrega.",
     %w[draft_messages draft_proposals], nil ],

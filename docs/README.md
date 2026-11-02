@@ -13,3 +13,6 @@
 | 08 | [Plan de implementación](08-plan-de-implementacion.md) | Fases, paralelismo, riesgos |
 | 09 | [Captura rápida](09-captura-rapida.md) | Procedimiento para registrar publicaciones encontradas a mano |
 | 10 | [Auditoría y transición a eQuantum ARM](10-arm-auditoria-y-transicion.md) | Fase 05: auditoría, plan CRM → ARM, diseño de Agent Control y lo que falta para agentes operativos |
+| 11 | [Infraestructura para agentes](11-infraestructura-agentes.md) | Comparación de alternativas de servidor, sin contratar |
+| 12 | [Colector de Freelancer](12-colector-freelancer.md) | Plan e implementación del primer colector (ejecución manual) |
+| 13 | [Coordinación con el frontend](13-coordinacion-frontend.md) | Qué comparten el PR #7 y el rediseño de Codex (PR #8) |
