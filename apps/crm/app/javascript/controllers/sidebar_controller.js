@@ -6,7 +6,12 @@ export default class extends Controller {
 
   connect() {
     this.media = window.matchMedia("(min-width: 1024px)")
-    this.onResize = () => { if (this.media.matches) this.close() }
+    this.onResize = () => {
+      if (!this.media.matches) return
+      const wasOpen = this.opened
+      this.close({ restoreFocus: false })
+      if (wasOpen) this.panelTarget.querySelector('[aria-current="page"]')?.focus()
+    }
     this.media.addEventListener("change", this.onResize)
     this.onTab = event => this.trapFocus(event)
     this.panelTarget.addEventListener("keydown", this.onTab)
@@ -15,7 +20,8 @@ export default class extends Controller {
   disconnect() {
     this.media.removeEventListener("change", this.onResize)
     this.panelTarget.removeEventListener("keydown", this.onTab)
-    document.body.style.overflow = this.previousOverflow || ""
+    this.restoreBackground()
+    if (this.opened) document.body.style.overflow = this.previousOverflow || ""
   }
 
   open() {
@@ -29,11 +35,15 @@ export default class extends Controller {
     this.panelTarget.setAttribute("aria-modal", "true")
     this.backdropTarget.classList.remove("hidden")
     this.triggerTarget.setAttribute("aria-expanded", "true")
+    this.background = [...this.element.children]
+      .filter(element => element !== this.panelTarget && element !== this.backdropTarget)
+      .map(element => [element, element.inert])
+    this.background.forEach(([element]) => { element.inert = true })
     document.body.style.overflow = "hidden"
     this.focusableElements()[0]?.focus()
   }
 
-  close() {
+  close({ restoreFocus = true } = {}) {
     const wasOpen = this.opened
     this.opened = false
     this.panelTarget.classList.add("hidden")
@@ -42,10 +52,16 @@ export default class extends Controller {
     this.panelTarget.removeAttribute("aria-modal")
     this.backdropTarget.classList.add("hidden")
     this.triggerTarget.setAttribute("aria-expanded", "false")
+    this.restoreBackground()
     if (wasOpen) {
       document.body.style.overflow = this.previousOverflow || ""
-      this.previousFocus?.focus()
+      if (restoreFocus && this.previousFocus?.isConnected) this.previousFocus.focus()
     }
+  }
+
+  restoreBackground() {
+    this.background?.forEach(([element, inert]) => { element.inert = inert })
+    this.background = null
   }
 
   navigate(event) {
@@ -53,8 +69,8 @@ export default class extends Controller {
   }
 
   focusableElements() {
-    return [...this.panelTarget.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]')]
-      .filter(element => element.getClientRects().length)
+    return [...this.panelTarget.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")]
+      .filter(element => element.tabIndex >= 0 && !element.disabled && element.getClientRects().length)
   }
 
   trapFocus(event) {

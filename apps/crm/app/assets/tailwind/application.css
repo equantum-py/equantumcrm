@@ -125,3 +125,28 @@
   .arm-app main form.grid { grid-template-columns: minmax(0, 1fr); }
   .arm-app main form.grid > * { grid-column: 1 / -1; }
 }
+
+/* Native Turbo loading state: no simulated data or replacement of live content. */
+.turbo-progress-bar { background: #5138f5; height: 3px; }
+html[aria-busy="true"] .arm-app .arm-topbar,
+.arm-app form[aria-busy="true"] { cursor: progress; }
+.arm-app form[aria-busy="true"] :is(button, input[type="submit"]) { cursor: wait; }
+.arm-empty-state { max-width: 100%; padding-block: clamp(24px, 4vw, 40px); }
+.arm-empty-icon { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 auto 14px; background: #f0edff; color: #5138f5; border-radius: 12px; }
+.arm-empty-state p { max-width: 60ch; margin-inline: auto; line-height: 1.65; }
+.arm-empty-state a { white-space: normal; }
+.arm-kanban { scroll-padding-inline: 4px; }
+.arm-app :is(button, a.inline-flex, summary) { touch-action: manipulation; }
+@media (max-width: 767px) {
+  /* 16px avoids focus zoom on mobile form fields. */
+  .arm-app :is(input:not([type="hidden"]), select, textarea) { font-size: 16px; }
+  .arm-app :is(button, input:not([type="hidden"]), select, a.inline-flex) { min-height: 44px; }
+  .arm-app main .flex > form { max-width: 100%; }
+}
+@media (forced-colors: active) {
+  .arm-app :is(a, button, input, select, textarea, summary):focus-visible { outline-color: Highlight; }
+  .arm-metric, .arm-kanban section, .arm-empty-state { border: 1px solid CanvasText; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .turbo-progress-bar { transition: none !important; }
+}

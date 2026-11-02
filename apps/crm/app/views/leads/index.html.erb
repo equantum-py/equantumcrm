@@ -14,7 +14,7 @@
 <% end %>
 
 <div class="arm-list-tools">
-  <p><strong data-records-target="count"><%= @leads.size %></strong> registros cargados · máximo 200</p>
+  <p role="status" aria-live="polite" aria-atomic="true"><strong data-records-target="count"><%= @leads.size %></strong> registros cargados · máximo 200</p>
   <label>Verificación
     <select data-records-target="verification" data-action="change->records#filter" class="<%= ApplicationHelper::INPUT_CLASS %>">
       <option value="">Todas</option>

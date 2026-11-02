@@ -5,6 +5,7 @@ export default class extends Controller {
   static targets = ["row", "body", "verification", "sort", "count", "empty"]
 
   connect() {
+    this.titleCollator = new Intl.Collator("es", { sensitivity: "base", numeric: true })
     this.filter()
     this.sort()
   }
@@ -17,7 +18,6 @@ export default class extends Controller {
       if (!row.hidden) count++
     })
     this.countTarget.textContent = count
-    this.countTarget.setAttribute("aria-live", "polite")
     this.emptyTarget.hidden = count > 0 || !this.rowTargets.length
   }
 
@@ -25,10 +25,12 @@ export default class extends Controller {
     if (!this.hasBodyTarget) return
     const key = this.sortTarget.value
     const rows = [...this.rowTargets].sort((a, b) => {
-      if (key === "title") return a.dataset.title.localeCompare(b.dataset.title, "es")
+      if (key === "title") return this.titleCollator.compare(a.dataset.title, b.dataset.title)
       const field = key === "recent" ? "detected" : "score"
       return Number(b.dataset[field]) - Number(a.dataset[field]) || Number(b.dataset.detected) - Number(a.dataset.detected)
     })
-    rows.forEach(row => this.bodyTarget.appendChild(row))
+    const fragment = document.createDocumentFragment()
+    rows.forEach(row => fragment.appendChild(row))
+    this.bodyTarget.appendChild(fragment)
   }
 }

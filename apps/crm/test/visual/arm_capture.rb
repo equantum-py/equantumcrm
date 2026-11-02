@@ -13,6 +13,7 @@ user = User.create!(name: "Equipo Demo", email_address: "visual-#{suffix}@exampl
 company = Company.create!(trade_name: "[DEMO] Estudio Norte #{suffix}", country: Country.find_by!(iso2: "PY"), owner: user)
 lead = Lead.create!(title: "[DEMO] Rediseño de tienda Shopify #{suffix}", source: Source.find_by!(key: "manual"),
   country: company.country, owner: user, need_summary: "Datos sintéticos exclusivos de validación visual.",
+  suggested_message: "[DEMO] Borrador para comprobar el portapapeles.",
   recommended_action: "Verificar la publicación antes de preparar una propuesta.", detected_at: Time.current)
 opportunity = Opportunity.create!(name: "[DEMO] Sitio corporativo #{suffix}", company: company, owner: user,
   country: company.country, pipeline_stage: PipelineStage.ordered.first, currency: "USD", estimated_value: "1200")
@@ -63,6 +64,14 @@ begin
         })
       JS
       raise "Filter outside its grid cell: #{name} at #{width}px" if clipped
+      clipped_buttons = session.evaluate_script(<<~JS)
+        [...document.querySelectorAll('main button, main input[type="submit"], main a.inline-flex')].some(element => {
+          if (!element.getClientRects().length || element.closest('.arm-kanban, .overflow-x-auto')) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left < -1 || rect.right > window.innerWidth + 1;
+        })
+      JS
+      raise "Button outside viewport: #{name} at #{width}px" if clipped_buttons
       session.save_screenshot(output.join("#{name}-#{width}.png"))
     end
   end
@@ -70,6 +79,11 @@ begin
   session.visit "/leads"
   session.find("button[aria-label='Abrir menú']").click
   raise "Drawer did not open" unless session.has_css?("[role='dialog'][aria-modal='true']")
+  raise "Background remains focusable" unless session.evaluate_script("document.querySelector('main').closest('[inert]') !== null")
+  session.driver.browser.action.key_down(:shift).send_keys(:tab).key_up(:shift).perform
+  raise "Shift+Tab escaped drawer" unless session.has_css?("#primary-navigation form button:focus", text: "Salir")
+  session.driver.browser.action.send_keys(:tab).perform
+  raise "Tab escaped drawer" unless session.has_css?(".arm-drawer-close:focus")
   session.save_screenshot(output.join("navigation-390.png"))
   session.find("#primary-navigation a", text: "Dashboard", exact_text: true).click
   raise "Drawer did not close" unless session.has_css?("button[aria-expanded='false']")
@@ -83,8 +97,44 @@ begin
   session.find("button[aria-label='Abrir menú']").click
   session.driver.browser.action.send_keys(:escape).perform
   raise "Escape did not close drawer" unless session.has_css?("button[aria-expanded='false']")
+  raise "Focus did not return to menu button" unless session.has_css?("button[aria-label='Abrir menú']:focus")
+  raise "Background stayed inert" if session.evaluate_script("document.querySelector('main').closest('[inert]') !== null")
+  session.find("button[aria-label='Abrir menú']").click
+  session.current_window.resize_to(1366, 1000)
+  raise "Resize retained modal state" unless session.has_no_css?("[aria-modal='true']")
+  raise "Resize left background inert" if session.evaluate_script("document.querySelector('main').closest('[inert]') !== null")
+  raise "Resize retained scroll lock" unless session.evaluate_script("document.body.style.overflow") == ""
+  session.current_window.resize_to(390, 900)
+
+  session.visit "/leads/#{lead.id}"
+  # Force both browser API outcomes; the UI must handle deferred success and denial.
+  session.execute_script("Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('Denied for test')) } })")
+  session.find("[data-controller='clipboard'] button").click
+  raise "Clipboard error missing" unless session.has_css?("[data-controller='clipboard'] [role='status']", text: "No se pudo copiar.")
+  session.execute_script("navigator.clipboard.writeText = () => new Promise(resolve => setTimeout(resolve, 20))")
+  session.find("[data-controller='clipboard'] button").click
+  raise "Clipboard confirmation missing" unless session.has_button?("Copiado")
+  raise "Clipboard status missing" unless session.has_css?("[data-controller='clipboard'] [role='status']", text: "Texto copiado al portapapeles.")
+
+  session.visit "/opportunities"
+  board = session.find(".arm-kanban")
+  session.execute_script("document.querySelector('.arm-kanban').focus()")
+  board.send_keys(:right)
+  session.assert_selector(".arm-kanban") { session.evaluate_script("document.querySelector('.arm-kanban').scrollLeft") > 0 }
+
+  [ 390, 1440 ].each do |width|
+    session.current_window.resize_to(width, 1000)
+    session.visit "/companies?q=arm-empty-#{suffix}"
+    raise "Empty state missing" unless session.has_css?(".arm-empty-state", text: "No hay empresas")
+    session.save_screenshot(output.join("companies-empty-#{width}.png"))
+  end
+  session.driver.browser.execute_cdp("Emulation.setEmulatedMedia", features: [ { name: "prefers-reduced-motion", value: "reduce" } ])
+  session.visit "/leads"
+  duration = session.evaluate_script("getComputedStyle(document.querySelector('main input')).transitionDuration")
+  raise "Reduced motion ignored" unless duration.split(",").all? { |value| value.strip == "0s" }
+
   checks = pages.size * widths.size
-  puts "PASS: verification filter, reset, sort, Escape; #{checks} page/viewport checks, mobile navigation, #{checks + 1} screenshots"
+  puts "PASS: verification, sort, focus trap/return, inert cleanup, resize, clipboard outcomes, keyboard Kanban, empty states, reduced motion; #{checks} page/viewport checks, mobile navigation, #{checks + 3} screenshots"
   puts "ARM integrated browser coverage: #{pages.key?(:agent_control) ? 'includes Agent Control' : 'pending PR #7 in main'}"
 ensure
   session.driver.quit
