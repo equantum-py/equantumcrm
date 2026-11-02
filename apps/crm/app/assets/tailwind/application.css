@@ -119,3 +119,9 @@
 }
 .arm-capture-day:first-child .arm-capture-tooltip { left: 0; transform: none; }
 .arm-capture-day:last-child .arm-capture-tooltip { left: auto; right: 0; transform: none; }
+/* Selects must shrink with their grid cell, including the shared min-w-36 preset. */
+.arm-app main form.grid select { min-width: 0; }
+@media (max-width: 359px) {
+  .arm-app main form.grid { grid-template-columns: minmax(0, 1fr); }
+  .arm-app main form.grid > * { grid-column: 1 / -1; }
+}

@@ -46,6 +46,14 @@ begin
       raise "Missing page #{name}" unless session.has_css?("main h1")
       overflow = session.evaluate_script("document.documentElement.scrollWidth > window.innerWidth + 1")
       raise "Page overflow: #{name} at #{width}px" if overflow
+      clipped = session.evaluate_script(<<~JS)
+        [...document.querySelectorAll('main form.grid select, main form.grid input:not([type="hidden"])')].some(element => {
+          const rect = element.getBoundingClientRect();
+          const parent = element.parentElement.getBoundingClientRect();
+          return rect.right > parent.right + 1 || rect.left < parent.left - 1;
+        })
+      JS
+      raise "Filter outside its grid cell: #{name} at #{width}px" if clipped
       session.save_screenshot(output.join("#{name}-#{width}.png"))
     end
   end
