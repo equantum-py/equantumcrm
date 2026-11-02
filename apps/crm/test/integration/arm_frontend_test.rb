@@ -35,6 +35,16 @@ class ArmFrontendTest < ActionDispatch::IntegrationTest
     assert_select ".arm-capture-day", maximum: 60, minimum: 1
   end
 
+  test "capture chart groups late detections by the application timezone" do
+    sign_in create_user
+    day = Date.current - 1.day
+    create_lead(detected_at: Time.zone.local(day.year, day.month, day.day, 23, 30))
+    get root_path(from: day.iso8601, to: day.iso8601)
+    assert_response :success
+    assert_select ".arm-capture-day", count: 1
+    assert_select ".arm-capture-day[aria-label$=': 1 prospectos']", count: 1
+  end
+
   test "prospect listing distinguishes explicitly marked demo and keeps server filters" do
     sign_in create_user
     create_lead(title: "[DEMO] Tienda de prueba")

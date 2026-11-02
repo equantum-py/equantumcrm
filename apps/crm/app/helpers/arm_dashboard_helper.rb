@@ -22,7 +22,9 @@ module ArmDashboardHelper
   end
 
   def arm_capture_series
-    counts = arm_dashboard_leads.group(Arel.sql("DATE(detected_at)")).count
+    zone = Lead.connection.quote(Time.zone.tzinfo.name)
+    local_day = Arel.sql("DATE(detected_at AT TIME ZONE 'UTC' AT TIME ZONE #{zone})")
+    counts = arm_dashboard_leads.group(local_day).count
     days = (@metrics.to - @metrics.from).to_i + 1
     return [] if days <= 0
 
