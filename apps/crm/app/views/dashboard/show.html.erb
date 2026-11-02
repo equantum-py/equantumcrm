@@ -1,6 +1,7 @@
-<% content_for :title, "Inicio" %>
-<%= render "shared/page_header", title: "Dashboard comercial", subtitle: "Del #{l(@metrics.from, format: :short_es)} al #{l(@metrics.to, format: :short_es)} · datos reales del CRM" %>
+<% content_for :title, "Centro de operaciones" %>
+<%= render "shared/page_header", title: "Centro de operaciones comerciales", subtitle: "Gestioná prospectos, oportunidades y acciones desde un solo lugar." %>
 
+<p class="arm-period">Período de captación · <%= l(@metrics.from, format: :short_es) %> — <%= l(@metrics.to, format: :short_es) %></p>
 <%= form_with url: root_path, method: :get, class: "mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6", data: { turbo_action: "advance" } do |f| %>
   <label><span class="sr-only">Desde</span><%= f.date_field :from, value: @metrics.from, class: ApplicationHelper::INPUT_CLASS, onchange: "this.form.requestSubmit()" %></label>
   <label><span class="sr-only">Hasta</span><%= f.date_field :to, value: @metrics.to, class: ApplicationHelper::INPUT_CLASS, onchange: "this.form.requestSubmit()" %></label>
@@ -11,33 +12,41 @@
 <% end %>
 
 <% kpis = [
-  ["Oportunidades detectadas", @metrics.leads_detected, leads_path],
-  ["Prospectos calificados", @metrics.leads_qualified, leads_path(status: "qualified")],
-  ["Prioridad alta o muy alta", @metrics.leads_high_priority, leads_path(band: "high")],
-  ["Pendientes de contacto", @metrics.pending_contact, opportunities_path],
-  ["Conversaciones iniciadas", @metrics.contacted, nil],
-  ["Reuniones", @metrics.meetings, nil],
-  ["Propuestas enviadas", @metrics.proposals_sent, opportunities_path],
-  ["En negociación", @metrics.negotiations, opportunities_path],
-  ["Ganados", @metrics.won, nil],
-  ["Perdidos", @metrics.lost, nil]
+  ["Prospectos detectados", @metrics.leads_detected, (leads_path(@filters.except(:from, :to)) if policy(Lead).index?), "En el período de captación", :spark],
+  ["Prospectos verificados", arm_dashboard_leads.where(verification_status: "verified").count, (leads_path(@filters.except(:from, :to)) if policy(Lead).index?), "Fuente verificada · período de captación", :shield],
+  ["Oportunidades activas", arm_dashboard_opportunities.open.count, (opportunities_path(@filters.except(:from, :to, :source_id)) if policy(Opportunity).index?), "Pipeline abierto · todas las fechas", :funnel],
+  ["Prioridad comercial alta", arm_dashboard_leads.where(commercial_priority: "high").count, (leads_path(@filters.except(:from, :to)) if policy(Lead).index?), "Calculada por ARM · puede ser estimada", :chart],
+  ["Propuestas enviadas", @metrics.proposals_sent, (opportunities_path(@filters.except(:from, :to, :source_id)) if policy(Opportunity).index?), "Etapa alcanzada · actualizado en el período", :tag],
+  ["Actividades próximas", arm_dashboard_activities.where(due_at: Time.current..).count, (activities_path if policy(Activity).index?), "Pendientes con fecha · desde ahora", :check]
 ] %>
-<dl class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-  <% kpis.each do |label, value, path| %>
-    <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
-      <dt class="text-xs font-medium text-slate-500"><%= label %></dt>
+<dl class="arm-metrics">
+  <% kpis.each do |label, value, path, context, icon| %>
+    <div class="arm-metric">
+      <dt class="text-xs font-medium text-slate-500"><span class="arm-metric-icon"><%= icon_svg(icon, "size-5") %></span><%= label %><span class="arm-kpi-context"><%= context %></span></dt>
       <dd class="mt-1 text-2xl font-semibold tabular-nums"><%= path ? link_to(value, path, class: "hover:text-indigo-600") : value %></dd>
     </div>
   <% end %>
 </dl>
 
+<details class="arm-more-metrics">
+  <summary>Más indicadores comerciales</summary>
+  <dl class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <% [["Calificados", @metrics.leads_qualified], ["Intención alta o muy alta", @metrics.leads_high_priority], ["Pendientes de contacto", @metrics.pending_contact], ["Conversaciones iniciadas", @metrics.contacted], ["Reuniones", @metrics.meetings], ["En negociación", @metrics.negotiations], ["Ganados", @metrics.won], ["Perdidos", @metrics.lost]].each do |label, count| %>
+      <div><dt class="text-xs text-slate-500"><%= label %></dt><dd class="mt-1 text-lg font-semibold"><%= count %></dd></div>
+    <% end %>
+  </dl>
+  <p class="arm-section-note">Calificados e intención: captación del período. Contactos y reuniones: actividades creadas en el período. Pendientes y negociación: estado actual. Ganados y perdidos: cierre en el período.</p>
+</details>
+
 <div class="mt-6 grid gap-6 lg:grid-cols-3">
   <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
-    <h2 class="text-sm font-semibold">Pipeline por etapa</h2>
+    <h2 class="text-sm font-semibold">Pipeline comercial</h2>
     <% breakdown = @metrics.stage_breakdown; max = [breakdown.map(&:last).max.to_i, 1].max %>
+    <p class="arm-section-note">Oportunidades registradas · todas las fechas de creación</p>
+    <% if breakdown.sum { |_, count| count }.zero? %><p class="arm-chart-empty">Tu pipeline empieza con la primera oportunidad calificada.</p><% end %>
     <ul class="mt-4 space-y-2">
       <% breakdown.each do |stage, count| %>
-        <li class="grid grid-cols-[9rem_1fr_2.5rem] items-center gap-3 text-sm">
+        <li class="grid grid-cols-[7rem_1fr_2rem] items-center gap-3 text-sm">
           <span class="truncate text-slate-600"><%= stage.name %></span>
           <span class="h-2 rounded-full bg-slate-100"><span class="block h-2 rounded-full <%= stage.lost? ? 'bg-red-400' : stage.won? ? 'bg-emerald-500' : 'bg-indigo-500' %>" style="width: <%= (count * 100.0 / max).round %>%"></span></span>
           <span class="text-right tabular-nums font-medium"><%= count %></span>
@@ -48,7 +57,7 @@
 
   <section class="space-y-4">
     <div class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-      <h2 class="text-sm font-semibold">Valor del pipeline abierto</h2>
+      <h2 class="text-sm font-semibold">Valor del pipeline abierto</h2><p class="arm-section-note">Todas las fechas de creación</p>
       <% values = @metrics.pipeline_value_by_currency %>
       <% if values.any? %>
         <ul class="mt-2 space-y-1"><% values.each do |amount| %><li class="text-lg font-semibold tabular-nums"><%= amount %></li><% end %></ul>
@@ -60,10 +69,10 @@
     <div class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
       <h2 class="text-sm font-semibold">Conversión comercial</h2>
       <p class="mt-2 text-2xl font-semibold tabular-nums"><%= @metrics.conversion_rate ? "#{@metrics.conversion_rate}%" : "—" %></p>
-      <p class="text-xs text-slate-500">Ganadas / (ganadas + perdidas) en el período.</p>
+      <p class="text-xs text-slate-500">Ganadas / (ganadas + perdidas) con cierre en el período.</p>
     </div>
     <div class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
-      <h2 class="text-sm font-semibold">Actividades vencidas</h2>
+      <h2 class="text-sm font-semibold">Actividades vencidas</h2><p class="arm-section-note">Pendientes de todas las fechas</p>
       <p class="mt-2 text-2xl font-semibold tabular-nums <%= 'text-red-600' if @metrics.overdue_activities.positive? %>"><%= link_to @metrics.overdue_activities, activities_path %></p>
     </div>
   </section>
@@ -74,8 +83,9 @@
     <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
       <h2 class="text-sm font-semibold"><%= title %></h2>
       <% if data.any? %>
-        <ul class="mt-3 divide-y divide-slate-100 text-sm">
-          <% data.each do |name, count| %><li class="flex justify-between py-2"><span><%= name %></span><span class="tabular-nums font-medium"><%= count %></span></li><% end %>
+        <% maximum = [data.values.max.to_i, 1].max %>
+        <ul class="arm-distribution mt-3 text-sm">
+          <% data.each do |name, count| %><li><div class="flex justify-between gap-3 py-2"><span><%= name %></span><span class="tabular-nums font-medium"><%= count %></span></div><progress class="arm-progress" max="<%= maximum %>" value="<%= count %>" aria-label="<%= name %>: <%= count %> prospectos"><%= count %></progress></li><% end %>
         </ul>
       <% else %>
         <p class="mt-3 text-sm text-slate-500">Sin prospectos en el período.</p>
@@ -83,3 +93,76 @@
     </section>
   <% end %>
 </div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-2">
+  <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+    <h2 class="text-sm font-semibold">Captación de prospectos</h2>
+    <p class="arm-section-note">Detecciones por período · hasta 60 intervalos; fecha al inicio de cada intervalo</p>
+    <% series = arm_capture_series; peak = [series.map(&:last).max.to_i, 1].max %>
+    <% if series.any? { |_, count| count.positive? } %>
+      <div class="arm-capture" role="group" aria-label="Captación diaria; enfocá cada barra para consultar la fecha y cantidad">
+        <% series.each do |day, count| %>
+          <div class="arm-capture-day" tabindex="0" aria-label="<%= date_label(day) %>: <%= count %> prospectos">
+            <span class="arm-capture-tooltip"><%= date_label(day) %> · <%= count %></span>
+            <span class="arm-capture-bar" style="height: <%= (count * 100.0 / peak).round %>%"></span>
+          </div>
+        <% end %>
+      </div>
+      <p class="mt-2 flex justify-between text-xs text-slate-500"><span><%= date_label(@metrics.from) %></span><span><%= date_label(@metrics.to) %></span></p>
+    <% else %>
+      <p class="arm-chart-empty">Las detecciones aparecerán acá cuando registres prospectos en este período.</p>
+    <% end %>
+  </section>
+  <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+    <h2 class="text-sm font-semibold">Prioridad comercial</h2>
+    <p class="arm-section-note">Clasificación almacenada · puede estar pendiente de verificación y aprobación</p>
+    <% priorities = arm_dashboard_leads.group(:commercial_priority).count; total = [priorities.values.sum, 1].max %>
+    <% if priorities.any? %>
+      <ul class="arm-distribution mt-3">
+        <% [["high", "Alta"], ["medium", "Media"], ["low", "Baja"], ["not_recommended", "No recomendada"], [nil, "Sin calcular"]].each do |key, label| %>
+          <% count = priorities.fetch(key, 0) %>
+          <li><div class="flex justify-between py-2 text-sm"><span><%= label %></span><span><%= count %></span></div><progress class="arm-progress" max="<%= total %>" value="<%= count %>" aria-label="<%= label %>: <%= count %>"><%= count %></progress></li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="arm-chart-empty">Sin prospectos en el período seleccionado.</p>
+    <% end %>
+  </section>
+</div>
+
+<% if policy(Opportunity).index? %>
+  <section class="mt-6 rounded-lg bg-white p-5 ring-1 ring-slate-200">
+    <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="text-sm font-semibold">Oportunidades en foco</h2><%= link_to "Ver pipeline →", opportunities_path, class: "text-sm font-medium text-indigo-700" %></div>
+    <p class="arm-section-note">Últimas 8 actualizadas · pipeline abierto · filtros comerciales · todas las fechas</p>
+    <% opportunities = arm_dashboard_opportunities.open.includes(:company, :country, :pipeline_stage, :services, :lead).order(updated_at: :desc).limit(8) %>
+    <% if opportunities.any? %>
+      <div class="mt-4 overflow-x-auto">
+        <table class="arm-responsive-table w-full text-sm">
+          <thead class="text-left"><tr><th>Oportunidad</th><th>País / servicio</th><th>Valor estimado</th><th>Prioridad</th><th>Estado</th><th>Próxima acción</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            <% opportunities.each do |opportunity| %>
+              <tr>
+                <td data-label="Oportunidad"><%= link_to opportunity.name, opportunity, class: "font-semibold hover:text-indigo-600" %><p class="arm-section-note"><%= opportunity.company.trade_name %></p></td>
+                <td data-label="País / servicio"><%= opportunity.country&.name || "Sin país" %><p class="arm-section-note"><%= opportunity.services.map(&:name).join(", ").presence || "Sin servicio" %></p></td>
+                <td data-label="Valor estimado"><%= opportunity.estimated_value || "Sin valor" %></td>
+                <td data-label="Prioridad"><%= opportunity.lead&.commercial_priority ? priority_badge(opportunity.lead.commercial_priority, estimated: true) : "Sin calcular" %></td>
+                <td data-label="Estado"><%= stage_badge(opportunity.pipeline_stage) %></td>
+                <td data-label="Próxima acción"><%= opportunity.lead&.recommended_action.presence || "Sin acción registrada" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="arm-chart-empty">Todavía no hay oportunidades abiertas con estos filtros.</p>
+    <% end %>
+  </section>
+<% end %>
+
+<% if policy(Activity).index? %>
+  <section class="mt-6 rounded-lg bg-white p-5 ring-1 ring-slate-200">
+    <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="text-sm font-semibold">Seguimientos pendientes</h2><%= link_to "Ver actividades →", activities_path, class: "text-sm font-medium text-indigo-700" %></div>
+    <p class="arm-section-note">Pendientes de todas las fechas · filtro por responsable; país, servicio y fuente no se aplican a actividades</p>
+    <%= render "activities/list", activities: arm_dashboard_activities.includes(:owner, :subject).chronological.limit(6), show_subject: true, empty: "No hay seguimientos pendientes." %>
+  </section>
+<% end %>
