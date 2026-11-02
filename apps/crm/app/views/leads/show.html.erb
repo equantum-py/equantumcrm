@@ -10,7 +10,7 @@
                end %>
 <% button_for = ->(step) { step == next_step ? ApplicationHelper::BUTTON_PRIMARY : ApplicationHelper::BUTTON_SECONDARY } %>
 
-<section class="mb-6 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="lead-title">
+<section class="arm-lead-summary mb-6 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="lead-title">
   <div class="flex items-center justify-between gap-3 text-sm">
     <%= link_to "← Prospectos", leads_path, class: "text-slate-500 hover:text-slate-700" %>
     <% if can_update %>
@@ -21,6 +21,7 @@
     <% end %>
   </div>
 
+  <% if @synthetic_lead %><p class="arm-demo">DEMO · registro de prueba</p><% end %>
   <h1 id="lead-title" class="mt-2 text-xl font-semibold leading-snug tracking-tight sm:text-2xl"><%= @lead.title %></h1>
   <p class="mt-1 text-sm text-slate-600">
     <%= @lead.services.map(&:name).join(", ").presence || "Servicio sin definir" %> ·
@@ -91,7 +92,7 @@
 <div class="grid gap-6 lg:grid-cols-3">
   <div class="space-y-6 lg:col-span-2">
     <section class="rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="analysis-title">
-      <h2 id="analysis-title" class="text-sm font-semibold">Análisis</h2>
+      <h2 id="analysis-title" class="text-sm font-semibold">Análisis de Prospect AI</h2>
 
       <div class="mt-3 grid gap-2 sm:grid-cols-3 sm:gap-3">
         <div class="rounded-md px-3 py-2 ring-1 sm:p-3 <%= @pending_analysis ? "bg-amber-50 ring-amber-200" : "bg-slate-50 ring-slate-200" %>">
@@ -159,7 +160,7 @@
       </details>
     </section>
 
-    <section id="contacto" class="scroll-mt-6 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="contact-title">
+    <section id="contacto" class="scroll-mt-24 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5" aria-labelledby="contact-title">
       <h2 id="contact-title" class="text-sm font-semibold">Preparar contacto</h2>
       <% if @lead.suggested_message.present? %>
         <div class="mt-3" data-controller="clipboard">
@@ -190,7 +191,7 @@
       <% end %>
     </section>
 
-    <section id="actividades" class="scroll-mt-6 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+    <section id="actividades" class="scroll-mt-24 rounded-lg bg-white p-4 ring-1 ring-slate-200 sm:p-5">
       <h2 class="mb-3 text-sm font-semibold">Actividades</h2>
       <%= render "activities/form", subject: @lead %>
       <%= render "activities/list", activities: @activities %>

@@ -1,24 +1,26 @@
+<div class="arm-agent-control">
 <% content_for :title, "Agent Control" %>
 <%= render "shared/page_header", title: "Agent Control", subtitle: "Qué agentes existen, qué pueden hacer, qué hicieron y qué espera tu aprobación." %>
 
-<dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
-    <dt class="text-xs font-medium text-slate-500">Agentes activos</dt>
+<dl class="arm-metrics arm-agent-metrics">
+  <div class="arm-metric">
+    <dt class="text-xs font-medium text-slate-500"><span class="arm-metric-icon"><%= icon_svg(:cpu, "size-5") %></span>Habilitados</dt>
     <dd class="mt-1 text-2xl font-semibold tabular-nums"><%= @agents.count(&:enabled) %> <span class="text-sm font-normal text-slate-500">de <%= @agents.size %></span></dd>
   </div>
-  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
-    <dt class="text-xs font-medium text-slate-500">Programados</dt>
+  <div class="arm-metric">
+    <dt class="text-xs font-medium text-slate-500"><span class="arm-metric-icon"><%= icon_svg(:list, "size-5") %></span>Programados</dt>
     <dd class="mt-1 text-2xl font-semibold tabular-nums"><%= @agents.count { |a| a.operating_state == :scheduled } %></dd>
   </div>
-  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
-    <dt class="text-xs font-medium text-slate-500">Esperan aprobación</dt>
+  <div class="arm-metric">
+    <dt class="text-xs font-medium text-slate-500"><span class="arm-metric-icon"><%= icon_svg(:shield, "size-5") %></span>Esperan aprobación</dt>
     <dd class="mt-1 text-2xl font-semibold tabular-nums <%= 'text-amber-700' if @pending_analyses.any? %>"><%= @pending_analyses.count %></dd>
   </div>
-  <div class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
-    <dt class="text-xs font-medium text-slate-500">Ejecuciones con error (7 días)</dt>
+  <div class="arm-metric">
+    <dt class="text-xs font-medium text-slate-500"><span class="arm-metric-icon"><%= icon_svg(:chart, "size-5") %></span>Ejecuciones con error (7 días)</dt>
     <dd class="mt-1 text-2xl font-semibold tabular-nums <%= 'text-red-600' if @failed_last_7_days.positive? %>"><%= @failed_last_7_days %></dd>
   </div>
 </dl>
+<p class="arm-section-note mt-3">Habilitado indica permiso de ejecución; no implica autonomía ni programación. Los estados de cada agente provienen del backend.</p>
 
 <div class="mt-6 grid gap-6 lg:grid-cols-3">
   <section class="lg:col-span-2" aria-labelledby="agents-heading">
@@ -29,7 +31,7 @@
       <ul class="space-y-3">
         <% @agents.each do |agent| %>
           <% last = @last_runs[agent.id] %>
-          <li class="rounded-lg bg-white p-4 ring-1 ring-slate-200">
+          <li class="arm-agent-card rounded-lg bg-white p-4 ring-1 ring-slate-200">
             <div class="flex flex-wrap items-start justify-between gap-2">
               <div class="min-w-0">
                 <p class="text-xs font-medium uppercase tracking-wide text-indigo-600"><%= agent.area_name %></p>
@@ -94,7 +96,7 @@
   <% else %>
     <div class="overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <table class="arm-responsive-table arm-agent-runs-table min-w-full divide-y divide-slate-200 text-sm">
           <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th class="px-4 py-3">Agente</th><th class="px-4 py-3">Inicio</th><th class="px-4 py-3">Duración</th><th class="px-4 py-3">Estado</th>
@@ -105,17 +107,17 @@
           <tbody class="divide-y divide-slate-100">
             <% @runs.each do |run| %>
               <tr class="align-top">
-                <td class="px-4 py-2 font-medium"><%= run.agent.name %><% if run.summary.present? %><p class="text-xs font-normal text-slate-500"><%= run.summary %></p><% end %>
+                <td data-label="Agente" class="px-4 py-2 font-medium"><%= run.agent.name %><% if run.summary.present? %><p class="text-xs font-normal text-slate-500"><%= run.summary %></p><% end %>
                   <% if run.error_messages.any? %><p class="text-xs font-normal text-red-700"><%= run.error_messages.last %></p><% end %></td>
-                <td class="px-4 py-2 whitespace-nowrap"><%= datetime_label(run.started_at) %></td>
-                <td class="px-4 py-2 whitespace-nowrap tabular-nums"><%= duration_label(run.duration) %></td>
-                <td class="px-4 py-2"><%= run_status_badge(run.status) %></td>
-                <td class="px-4 py-2 hidden md:table-cell"><%= ApplicationHelper::RUN_TRIGGERS.fetch(run.trigger, run.trigger) %></td>
-                <td class="px-4 py-2 hidden md:table-cell"><%= run.source_key || "—" %></td>
-                <td class="px-4 py-2 text-right tabular-nums"><%= run.leads_detected %></td>
-                <td class="px-4 py-2 text-right tabular-nums"><%= run.duplicates %></td>
-                <td class="px-4 py-2 text-right tabular-nums <%= 'text-red-600' if run.errors_count.positive? %>"><%= run.errors_count %></td>
-                <td class="px-4 py-2 text-right tabular-nums"><%= run.pending_approvals %></td>
+                <td data-label="Inicio" class="px-4 py-2 whitespace-nowrap"><%= datetime_label(run.started_at) %></td>
+                <td data-label="Duración" class="px-4 py-2 whitespace-nowrap tabular-nums"><%= duration_label(run.duration) %></td>
+                <td data-label="Estado" class="px-4 py-2"><%= run_status_badge(run.status) %></td>
+                <td data-label="Origen" class="px-4 py-2 hidden md:table-cell"><%= ApplicationHelper::RUN_TRIGGERS.fetch(run.trigger, run.trigger) %></td>
+                <td data-label="Fuente" class="px-4 py-2 hidden md:table-cell"><%= run.source_key || "—" %></td>
+                <td data-label="Prospectos" class="px-4 py-2 text-right tabular-nums"><%= run.leads_detected %></td>
+                <td data-label="Duplicados" class="px-4 py-2 text-right tabular-nums"><%= run.duplicates %></td>
+                <td data-label="Errores" class="px-4 py-2 text-right tabular-nums <%= 'text-red-600' if run.errors_count.positive? %>"><%= run.errors_count %></td>
+                <td data-label="A aprobar" class="px-4 py-2 text-right tabular-nums"><%= run.pending_approvals %></td>
               </tr>
             <% end %>
           </tbody>
@@ -124,3 +126,5 @@
     </div>
   <% end %>
 </section>
+
+</div>

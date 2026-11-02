@@ -84,7 +84,49 @@ class DashboardMetrics
   # Leads captured in the period by channel (manual capture, API, Skill).
   def leads_by_channel = leads.group(:created_via).count
 
+  # Read-only presentation contract. All commercial scopes remain defined here
+  # or in Lead; views and helpers do not reproduce filtering or priority rules.
+  def leads_verified = leads.where(verification_status: "verified").count
+  def active_opportunities = base_opportunities.open.count
+  def commercial_priorities = leads.group(:commercial_priority).count
+
+  def upcoming_activities_count = pending_activities.where(due_at: Time.current..).count
+
+  def pending_activities_preview
+    pending_activities.includes(:owner, :subject).chronological.limit(6)
+  end
+
+  def opportunities_preview
+    @opportunities_preview ||= base_opportunities.open.includes(:company, :country, :pipeline_stage, :services, :lead)
+      .order(updated_at: :desc).limit(8).to_a
+  end
+
+  def opportunity_confirmed_priority_ids
+    @opportunity_confirmed_priority_ids ||= Lead.priority_confirmed.where(id: opportunities_preview.filter_map(&:lead_id)).pluck(:id)
+  end
+
+  def capture_series
+    zone = Lead.connection.quote(Time.zone.tzinfo.name)
+    local_day = Arel.sql("DATE(detected_at AT TIME ZONE 'UTC' AT TIME ZONE #{zone})")
+    counts = leads.group(local_day).count
+    days = (to - from).to_i + 1
+    return [] if days <= 0
+
+    step = [ (days / 60.0).ceil, 1 ].max
+    buckets = counts.group_by { |day, _| ((day - from).to_i / step) }
+    (0...days).step(step).map do |offset|
+      [ from + offset, Array(buckets[offset / step]).sum { |_, count| count } ]
+    end
+  end
+
   private
+    # Reuse the canonical data-layer scope for both presentation indicators.
+    def pending_activities
+      scope = Activity.real.pending
+      scope = scope.where(owner_id: @owner_id) if @owner_id
+      scope
+    end
+
     def high_priority_open = open_leads.where(commercial_priority: "high").where.missing(:opportunity)
 
     def open_leads

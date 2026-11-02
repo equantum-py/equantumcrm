@@ -1,0 +1,48 @@
+name: ARM frontend visual validation
+on:
+  pull_request:
+    paths:
+      - "apps/crm/app/views/**"
+      - "apps/crm/app/helpers/**"
+      - "apps/crm/app/assets/**"
+      - "apps/crm/app/javascript/**"
+      - "apps/crm/test/visual/**"
+      - ".github/workflows/arm-frontend.yml"
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U crm" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: apps/crm
+    env:
+      ARM_INTEGRATION_REQUIRED: "1"
+      RAILS_ENV: test
+      DB_HOST: localhost
+      DB_USERNAME: crm
+      DB_PASSWORD: crm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/crm
+          bundler-cache: true
+      - run: bin/rails db:create db:schema:load
+      - run: bin/rails tailwindcss:build
+      - run: bin/rails runner test/visual/arm_capture.rb
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arm-frontend-screenshots
+          path: apps/crm/tmp/arm-visual/*.png
+          if-no-files-found: warn

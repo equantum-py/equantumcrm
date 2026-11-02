@@ -7,6 +7,13 @@ class OpportunitiesController < ApplicationController
     @filters = params.permit(:q, :owner_id, :country_id, :service_id)
     @stages = PipelineStage.ordered
     @opportunities = Opportunity.filter(@filters).includes(:company, :owner, :pipeline_stage, :services).order(stage_changed_at: :desc)
+    if @view == "kanban" && policy(Lead).index?
+      @source_leads = Lead.where(id: @opportunities.filter_map(&:lead_id)).index_by(&:id)
+      @confirmed_source_lead_ids = Lead.priority_confirmed.where(id: @source_leads.keys).pluck(:id)
+    else
+      @source_leads = {}
+      @confirmed_source_lead_ids = []
+    end
   end
 
   def show

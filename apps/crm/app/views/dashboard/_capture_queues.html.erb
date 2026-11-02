@@ -1,0 +1,48 @@
+<section aria-labelledby="capture-heading" class="mb-6">
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div><h2 id="capture-heading" class="text-sm font-semibold">Para atender ahora</h2><p class="arm-section-note">Prospectos reales abiertos · todos los períodos de captación · filtros comerciales seleccionados</p></div>
+    <% if policy(:agent_control).show? %><%= link_to "Agent Control →", agent_control_path, class: ApplicationHelper::BUTTON_SECONDARY %><% end %>
+  </div>
+  <% filters = @filters.to_h.slice("country_id", "service_id", "source_id", "owner_id").compact_blank %>
+  <% lead_access = policy(Lead).index? %>
+  <% queues = [
+    ["Sin verificar", @metrics.to_verify, (leads_path(filters.merge(verification: "unverified")) if lead_access), "Fuente pendiente de verificación", :shield],
+    ["Análisis IA por aprobar", @metrics.pending_ai_reviews, (agent_control_path if policy(:agent_control).show?), "Análisis pendientes de revisión humana", :spark],
+    ["Prioridad alta confirmada", @metrics.high_priority_confirmed, (leads_path(filters.merge(priority: "high", priority_status: "confirmed")) if lead_access), "Sin oportunidad · confirmación del backend", :check],
+    ["Prioridad alta estimada", @metrics.high_priority_estimated, (leads_path(filters.merge(priority: "high", priority_status: "estimated")) if lead_access), "Sin oportunidad · todavía sin confirmar", :chart],
+    ["Cierran en 7 días", @metrics.closing_soon_count, "#closing-soon", "Publicaciones abiertas con plazo próximo", :list]
+  ] %>
+  <dl class="arm-metrics arm-queue-metrics">
+    <% queues.each do |label, value, path, hint, icon| %>
+      <div class="arm-metric">
+        <dt class="text-xs font-medium text-slate-500"><span class="arm-metric-icon"><%= icon_svg(icon, "size-5") %></span><%= label %></dt>
+        <dd class="mt-1 text-2xl font-semibold tabular-nums"><%= path ? link_to(value, path, class: "hover:text-indigo-600") : value %><p class="arm-section-note"><%= hint %></p></dd>
+      </div>
+    <% end %>
+  </dl>
+  <div class="mt-4 grid gap-4 lg:grid-cols-3">
+    <section id="closing-soon" class="scroll-mt-24 rounded-lg bg-white p-5 ring-1 ring-slate-200 lg:col-span-2">
+      <h3 class="text-sm font-semibold">Cierran pronto</h3>
+      <% closing = @metrics.closing_soon %>
+      <% if closing.any? %>
+        <ul class="mt-3 divide-y divide-slate-100 text-sm">
+          <% closing.each do |lead| %>
+            <li class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <span class="min-w-0"><%= lead_access ? link_to(lead.title, lead, class: "font-medium hover:text-indigo-600") : lead.title %></span>
+              <span class="shrink-0 text-xs text-slate-500"><%= datetime_label(lead.deadline_at) %></span>
+            </li>
+          <% end %>
+        </ul>
+      <% else %><p class="mt-3 text-sm text-slate-500">Ningún prospecto abierto cierra en los próximos 7 días.</p><% end %>
+    </section>
+    <section class="rounded-lg bg-white p-5 ring-1 ring-slate-200">
+      <h3 class="text-sm font-semibold">Captados por canal</h3><p class="arm-section-note">Período de captación y filtros seleccionados</p>
+      <% channels = @metrics.leads_by_channel %>
+      <ul class="arm-distribution mt-3 text-sm">
+        <% { "manual" => "Captura manual", "api" => "API", "skill" => "Skills" }.each do |key, label| %>
+          <li class="flex justify-between gap-3"><span><%= label %></span><span class="font-semibold tabular-nums"><%= channels.fetch(key, 0) %></span></li>
+        <% end %>
+      </ul>
+    </section>
+  </div>
+</section>

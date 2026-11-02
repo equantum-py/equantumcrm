@@ -61,7 +61,8 @@ class DashboardCaptureTest < ActionDispatch::IntegrationTest
     sign_in user
     get root_path
     assert_response :success
-    assert_select "h1", text: "Captación comercial"
+    assert_select "h1", text: "Centro de operaciones comerciales"
+    assert_select "h2", text: "Para atender ahora"
     assert_select "a", text: "Cierra mañana"
   end
 
@@ -91,7 +92,7 @@ class DashboardCaptureTest < ActionDispatch::IntegrationTest
     sign_in create_user
     get root_path
     assert_select "dt", text: "Prioridad alta confirmada"
-    assert_select "p", text: /3 con prioridad alta estimada/
+    assert_select ".arm-queue-metrics .arm-metric:nth-child(4) dd a", text: "3"
     get leads_path(priority: "high", priority_status: "confirmed")
     assert_select "a", text: "Alta confirmada"
     assert_select "a", text: "Alta sin verificar", count: 0
