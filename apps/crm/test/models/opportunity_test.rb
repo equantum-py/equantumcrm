@@ -27,4 +27,19 @@ class OpportunityTest < ActiveSupport::TestCase
     opportunity = Opportunity.new(name: "x", company: create_company, owner: @owner, pipeline_stage: PipelineStage.ordered.first, estimated_value_cents: 100)
     assert_not opportunity.valid?
   end
+
+  test "blank currency from the form is stored as nil (regression B2)" do
+    opportunity = Opportunity.new(name: "Sin moneda", company: create_company, owner: @owner,
+      pipeline_stage: PipelineStage.ordered.first, currency: "", estimated_value: "")
+    assert opportunity.save, opportunity.errors.full_messages.to_sentence
+    assert_nil opportunity.reload.currency
+    assert_nil opportunity.estimated_value_cents
+  end
+
+  test "blank currency with a value is still rejected" do
+    opportunity = Opportunity.new(name: "x", company: create_company, owner: @owner,
+      pipeline_stage: PipelineStage.ordered.first, currency: "", estimated_value_cents: 100)
+    assert_not opportunity.valid?
+    assert opportunity.errors.of_kind?(:currency, :blank)
+  end
 end
