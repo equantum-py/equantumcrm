@@ -14,6 +14,15 @@ class PipelineTest < ActionDispatch::IntegrationTest
     assert_select "td", text: /Migración a Shopify/
   end
 
+  test "creating an opportunity from the form without choosing a currency works (regression B2)" do
+    company = create_company
+    assert_difference -> { Opportunity.count } => 1 do
+      post opportunities_path, params: { opportunity: { name: "Sin moneda elegida", company_id: company.id,
+        pipeline_stage_id: PipelineStage.ordered.first.id, owner_id: @user.id, currency: "", estimated_value: "" } }
+    end
+    assert_nil Opportunity.find_by!(name: "Sin moneda elegida").currency
+  end
+
   test "moving to lost requires a reason and logs an activity" do
     opportunity = create_opportunity(owner: @user)
     lost = PipelineStage.find_by!(kind: "lost")

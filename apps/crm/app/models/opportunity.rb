@@ -10,6 +10,10 @@ class Opportunity < ApplicationRecord
   has_many :services, through: :opportunity_services
   has_many :activities, as: :subject, dependent: :destroy
 
+  # The form's blank option sends "" for "no currency"; store it as nil so the
+  # inclusion check (allow_nil) accepts an opportunity without a value.
+  normalizes :currency, with: ->(value) { value.strip.upcase.presence }
+
   before_validation :track_stage_change
 
   validates :name, presence: true, length: { maximum: 200 }
