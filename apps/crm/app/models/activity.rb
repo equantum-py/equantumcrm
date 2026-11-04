@@ -6,6 +6,7 @@ class Activity < ApplicationRecord
 
   belongs_to :subject, polymorphic: true
   belongs_to :owner, class_name: "User"
+  belongs_to :inbox_item, optional: true
 
   validates :kind, inclusion: { in: KINDS }
   validates :subject_type, inclusion: { in: SUBJECT_TYPES }

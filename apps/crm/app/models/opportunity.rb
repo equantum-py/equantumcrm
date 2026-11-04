@@ -6,6 +6,7 @@ class Opportunity < ApplicationRecord
   belongs_to :pipeline_stage
   belongs_to :owner, class_name: "User"
   belongs_to :country, optional: true
+  belongs_to :contact, optional: true
   has_many :opportunity_services, dependent: :destroy
   has_many :services, through: :opportunity_services
   has_many :activities, as: :subject, dependent: :destroy

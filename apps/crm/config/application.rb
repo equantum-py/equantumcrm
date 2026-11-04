@@ -26,7 +26,7 @@ module Crm
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    config.autoload_lib(ignore: %w[assets tasks middleware])
 
     # Configuration for the application, engines, and railties goes here.
     #
@@ -37,5 +37,17 @@ module Crm
     config.i18n.default_locale = :es
     config.i18n.available_locales = %i[es en]
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Active Record Encryption for personal data received from Meta (phone,
+    # email, message text, form answers, raw payloads). Keys come only from the
+    # environment (/etc/arm/arm.env in production); development and test set
+    # fixed, non-secret keys in their environment files.
+    config.active_record.encryption.primary_key = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"]
+    config.active_record.encryption.deterministic_key = ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"]
+    config.active_record.encryption.key_derivation_salt = ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"]
+
+    # Only /webhooks/meta answers on the public webhook host (plan r2, 2.3).
+    require_relative "../lib/middleware/meta_public_host_guard"
+    config.middleware.insert_before 0, MetaPublicHostGuard
   end
 end
