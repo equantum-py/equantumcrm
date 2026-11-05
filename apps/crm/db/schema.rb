@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -27,6 +27,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.string "outcome"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "inbox_item_id"
+    t.string "rule_key"
+    t.index ["inbox_item_id", "rule_key"], name: "index_activities_on_inbox_item_and_rule_key", unique: true, where: "(rule_key IS NOT NULL)"
+    t.index ["inbox_item_id"], name: "index_activities_on_inbox_item_id"
     t.index ["owner_id", "completed_at", "due_at"], name: "index_activities_on_owner_id_and_completed_at_and_due_at"
     t.index ["owner_id"], name: "index_activities_on_owner_id"
     t.index ["subject_type", "subject_id"], name: "index_activities_on_subject"
@@ -109,6 +113,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.index ["token_digest"], name: "index_api_clients_on_token_digest", unique: true
   end
 
+  create_table "assignments", force: :cascade do |t|
+    t.bigint "inbox_item_id", null: false
+    t.bigint "user_id", null: false
+    t.string "kind", null: false
+    t.bigint "actor_id"
+    t.string "source", null: false
+    t.text "reason"
+    t.datetime "started_at", null: false
+    t.datetime "ended_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_assignments_on_actor_id"
+    t.index ["inbox_item_id", "ended_at"], name: "index_assignments_on_inbox_item_id_and_ended_at"
+    t.index ["user_id"], name: "index_assignments_on_user_id"
+    t.check_constraint "kind::text = ANY (ARRAY['proposed'::character varying, 'confirmed'::character varying]::text[])", name: "assignments_kind_valid"
+  end
+
   create_table "audit_logs", force: :cascade do |t|
     t.bigint "actor_id"
     t.string "action", null: false
@@ -123,6 +144,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.index ["api_client_id"], name: "index_audit_logs_on_api_client_id"
     t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
+  end
+
+  create_table "channels", force: :cascade do |t|
+    t.string "kind", null: false
+    t.string "name", null: false
+    t.string "external_account_id", null: false
+    t.string "status", default: "planned", null: false
+    t.bigint "default_owner_id"
+    t.boolean "auto_confirm", default: false, null: false
+    t.boolean "auto_create_lead", default: false, null: false
+    t.boolean "synthetic", default: false, null: false
+    t.jsonb "settings", default: {}, null: false
+    t.datetime "last_event_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["default_owner_id"], name: "index_channels_on_default_owner_id"
+    t.index ["kind", "external_account_id"], name: "index_channels_on_kind_and_external_account_id", unique: true
+    t.check_constraint "kind::text = ANY (ARRAY['whatsapp'::character varying, 'meta_lead_ads'::character varying, 'instagram'::character varying]::text[])", name: "channels_kind_valid"
+    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying, 'configured'::character varying, 'operational'::character varying, 'paused'::character varying]::text[])", name: "channels_status_valid"
   end
 
   create_table "commercial_thresholds", force: :cascade do |t|
@@ -167,6 +207,59 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.index ["service_id"], name: "index_company_services_on_service_id"
   end
 
+  create_table "contact_matches", force: :cascade do |t|
+    t.bigint "contact_id", null: false
+    t.bigint "candidate_contact_id", null: false
+    t.string "reason", null: false
+    t.string "status", default: "pending", null: false
+    t.bigint "decided_by_id"
+    t.datetime "decided_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["candidate_contact_id"], name: "index_contact_matches_on_candidate_contact_id"
+    t.index ["contact_id", "candidate_contact_id"], name: "index_contact_matches_on_contact_id_and_candidate_contact_id", unique: true
+    t.index ["contact_id"], name: "index_contact_matches_on_contact_id"
+    t.index ["decided_by_id"], name: "index_contact_matches_on_decided_by_id"
+    t.check_constraint "contact_id <> candidate_contact_id", name: "contact_matches_distinct"
+    t.check_constraint "reason::text = ANY (ARRAY['same_phone'::character varying, 'same_email'::character varying]::text[])", name: "contact_matches_reason_valid"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'rejected'::character varying, 'reverted'::character varying]::text[])", name: "contact_matches_status_valid"
+  end
+
+  create_table "contacts", force: :cascade do |t|
+    t.string "name"
+    t.string "phone_e164"
+    t.string "email"
+    t.bigint "company_id"
+    t.bigint "primary_contact_id"
+    t.string "consent_source"
+    t.datetime "consent_at"
+    t.boolean "do_not_contact", default: false, null: false
+    t.datetime "anonymized_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["company_id"], name: "index_contacts_on_company_id"
+    t.index ["email"], name: "index_contacts_on_email"
+    t.index ["phone_e164"], name: "index_contacts_on_phone_e164"
+    t.index ["primary_contact_id"], name: "index_contacts_on_primary_contact_id"
+  end
+
+  create_table "conversations", force: :cascade do |t|
+    t.bigint "channel_id", null: false
+    t.bigint "external_identity_id", null: false
+    t.bigint "contact_id", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "last_inbound_at"
+    t.datetime "window_expires_at"
+    t.datetime "reopened_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel_id"], name: "index_conversations_on_channel_id"
+    t.index ["contact_id"], name: "index_conversations_on_contact_id"
+    t.index ["external_identity_id"], name: "index_conversations_on_external_identity_id", unique: true
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'closed'::character varying]::text[])", name: "conversations_status_valid"
+  end
+
   create_table "countries", force: :cascade do |t|
     t.string "iso2", limit: 2, null: false
     t.string "name", null: false
@@ -177,6 +270,94 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["iso2"], name: "index_countries_on_iso2", unique: true
+  end
+
+  create_table "external_identities", force: :cascade do |t|
+    t.bigint "channel_id", null: false
+    t.bigint "contact_id", null: false
+    t.string "external_id", null: false
+    t.string "profile_name"
+    t.datetime "first_seen_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel_id", "external_id"], name: "index_external_identities_on_channel_id_and_external_id", unique: true
+    t.index ["channel_id"], name: "index_external_identities_on_channel_id"
+    t.index ["contact_id"], name: "index_external_identities_on_contact_id"
+  end
+
+  create_table "inbox_items", force: :cascade do |t|
+    t.string "kind", null: false
+    t.string "subject_type", null: false
+    t.bigint "subject_id", null: false
+    t.bigint "channel_id", null: false
+    t.bigint "contact_id"
+    t.bigint "lead_id"
+    t.string "attention_status", default: "new", null: false
+    t.string "discard_reason"
+    t.datetime "review_at"
+    t.string "assignment_status", default: "unassigned", null: false
+    t.bigint "proposed_owner_id"
+    t.bigint "proposed_by_id"
+    t.datetime "proposed_at"
+    t.string "proposal_source"
+    t.text "proposal_note"
+    t.bigint "confirmed_owner_id"
+    t.bigint "confirmed_by_id"
+    t.datetime "confirmed_at"
+    t.datetime "first_attended_at"
+    t.datetime "last_activity_at", null: false
+    t.text "preview"
+    t.integer "reopened_count", default: 0, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assignment_status"], name: "index_inbox_items_pending_assignment", where: "((assignment_status)::text <> 'confirmed'::text)"
+    t.index ["channel_id"], name: "index_inbox_items_on_channel_id"
+    t.index ["confirmed_by_id"], name: "index_inbox_items_on_confirmed_by_id"
+    t.index ["confirmed_owner_id", "attention_status"], name: "index_inbox_items_on_confirmed_owner_id_and_attention_status"
+    t.index ["contact_id"], name: "index_inbox_items_on_contact_id"
+    t.index ["last_activity_at", "id"], name: "index_inbox_items_on_last_activity_at_and_id", order: :desc
+    t.index ["lead_id"], name: "index_inbox_items_on_lead_id"
+    t.index ["proposed_by_id"], name: "index_inbox_items_on_proposed_by_id"
+    t.index ["proposed_owner_id"], name: "index_inbox_items_on_proposed_owner_id"
+    t.index ["subject_type", "subject_id"], name: "index_inbox_items_on_subject", unique: true
+    t.index ["updated_at", "last_activity_at"], name: "index_inbox_items_on_updated_at_and_last_activity_at"
+    t.check_constraint "assignment_status::text <> 'confirmed'::text OR confirmed_owner_id IS NOT NULL", name: "inbox_items_confirmed_needs_owner"
+    t.check_constraint "assignment_status::text <> 'proposed'::text OR proposed_owner_id IS NOT NULL", name: "inbox_items_proposed_needs_owner"
+    t.check_constraint "assignment_status::text = ANY (ARRAY['unassigned'::character varying, 'proposed'::character varying, 'confirmed'::character varying]::text[])", name: "inbox_items_assignment_status_valid"
+    t.check_constraint "attention_status::text <> 'discarded'::text OR discard_reason IS NOT NULL", name: "inbox_items_discard_needs_reason"
+    t.check_constraint "attention_status::text <> 'waiting_customer'::text OR review_at IS NOT NULL", name: "inbox_items_waiting_needs_review_at"
+    t.check_constraint "attention_status::text = ANY (ARRAY['new'::character varying, 'in_progress'::character varying, 'waiting_customer'::character varying, 'resolved'::character varying, 'discarded'::character varying]::text[])", name: "inbox_items_attention_status_valid"
+    t.check_constraint "kind::text = ANY (ARRAY['conversation'::character varying, 'form_submission'::character varying]::text[])", name: "inbox_items_kind_valid"
+    t.check_constraint "proposal_source IS NULL OR (proposal_source::text = ANY (ARRAY['rule'::character varying, 'manager'::character varying]::text[]))", name: "inbox_items_proposal_source_valid"
+  end
+
+  create_table "inbox_notes", force: :cascade do |t|
+    t.bigint "inbox_item_id", null: false
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_inbox_notes_on_author_id"
+    t.index ["inbox_item_id", "created_at"], name: "index_inbox_notes_on_inbox_item_id_and_created_at"
+  end
+
+  create_table "inbox_operations", force: :cascade do |t|
+    t.uuid "operation_id", null: false
+    t.string "target_type", null: false
+    t.bigint "target_id", null: false
+    t.bigint "actor_id", null: false
+    t.string "action", null: false
+    t.string "request_sha256", null: false
+    t.integer "response_status", null: false
+    t.jsonb "response_body", default: {}, null: false
+    t.integer "resulting_lock_version"
+    t.datetime "created_at", null: false
+    t.index ["actor_id"], name: "index_inbox_operations_on_actor_id"
+    t.index ["created_at"], name: "index_inbox_operations_on_created_at"
+    t.index ["operation_id"], name: "index_inbox_operations_on_operation_id", unique: true
+    t.index ["target_type", "target_id"], name: "index_inbox_operations_on_target"
   end
 
   create_table "ingestion_requests", force: :cascade do |t|
@@ -207,6 +388,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.index ["captured_by_id"], name: "index_lead_evidences_on_captured_by_id"
     t.index ["lead_id"], name: "index_lead_evidences_on_lead_id"
     t.check_constraint "char_length(excerpt) <= 2000", name: "lead_evidences_excerpt_length"
+  end
+
+  create_table "lead_form_submissions", force: :cascade do |t|
+    t.bigint "channel_id", null: false
+    t.string "leadgen_id", null: false
+    t.string "form_id"
+    t.string "form_name"
+    t.string "ad_id"
+    t.string "ad_name"
+    t.string "campaign_id"
+    t.string "campaign_name"
+    t.string "platform"
+    t.boolean "is_organic"
+    t.string "retrieval_status", default: "pending", null: false
+    t.text "retrieval_error"
+    t.text "field_data"
+    t.datetime "submitted_at"
+    t.datetime "received_at", null: false
+    t.datetime "retrieved_at"
+    t.bigint "contact_id"
+    t.bigint "lead_id"
+    t.bigint "webhook_event_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel_id"], name: "index_lead_form_submissions_on_channel_id"
+    t.index ["contact_id"], name: "index_lead_form_submissions_on_contact_id"
+    t.index ["lead_id"], name: "index_lead_form_submissions_on_lead_id"
+    t.index ["leadgen_id"], name: "index_lead_form_submissions_on_leadgen_id", unique: true
+    t.index ["webhook_event_id"], name: "index_lead_form_submissions_on_webhook_event_id"
+    t.check_constraint "retrieval_status::text = ANY (ARRAY['pending'::character varying, 'retrieved'::character varying, 'failed'::character varying]::text[])", name: "lead_form_submissions_retrieval_status_valid"
   end
 
   create_table "lead_scores", force: :cascade do |t|
@@ -276,8 +487,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.jsonb "priority_breakdown", default: {}, null: false
     t.datetime "priority_calculated_at"
     t.boolean "synthetic", default: false, null: false
+    t.bigint "contact_id"
     t.index ["commercial_priority"], name: "index_leads_on_commercial_priority"
     t.index ["company_id"], name: "index_leads_on_company_id"
+    t.index ["contact_id"], name: "index_leads_on_contact_id"
     t.index ["country_id", "detected_at"], name: "index_leads_on_country_id_and_detected_at"
     t.index ["country_id"], name: "index_leads_on_country_id"
     t.index ["fingerprint"], name: "index_leads_on_fingerprint", unique: true
@@ -297,6 +510,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.check_constraint "verification_status::text = ANY (ARRAY['unverified'::character varying::text, 'verified'::character varying::text, 'unreachable'::character varying::text, 'rejected'::character varying::text])", name: "leads_verification_status"
   end
 
+  create_table "messages", force: :cascade do |t|
+    t.bigint "conversation_id", null: false
+    t.string "direction", default: "in", null: false
+    t.string "external_message_id", null: false
+    t.string "message_kind", default: "text", null: false
+    t.string "content_status", default: "ok", null: false
+    t.text "body"
+    t.jsonb "media", default: {}, null: false
+    t.datetime "sent_at", null: false
+    t.datetime "received_at", null: false
+    t.bigint "webhook_event_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id", "sent_at", "id"], name: "index_messages_on_conversation_id_and_sent_at_and_id"
+    t.index ["external_message_id"], name: "index_messages_on_external_message_id", unique: true
+    t.index ["webhook_event_id"], name: "index_messages_on_webhook_event_id"
+    t.check_constraint "content_status::text = ANY (ARRAY['ok'::character varying, 'unsupported'::character varying, 'unavailable'::character varying]::text[])", name: "messages_content_status_valid"
+    t.check_constraint "direction::text = 'in'::text", name: "messages_inbound_only"
+  end
+
   create_table "opportunities", force: :cascade do |t|
     t.string "name", null: false
     t.bigint "company_id", null: false
@@ -313,7 +546,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.string "lost_reason"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "contact_id"
     t.index ["company_id"], name: "index_opportunities_on_company_id"
+    t.index ["contact_id"], name: "index_opportunities_on_contact_id"
     t.index ["country_id"], name: "index_opportunities_on_country_id"
     t.index ["lead_id"], name: "index_opportunities_on_lead_id", unique: true
     t.index ["owner_id"], name: "index_opportunities_on_owner_id"
@@ -469,30 +704,84 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
     t.index ["role_id"], name: "index_users_on_role_id"
   end
 
+  create_table "webhook_events", force: :cascade do |t|
+    t.string "provider", default: "meta", null: false
+    t.string "object_type", null: false
+    t.string "event_key", null: false
+    t.bigint "channel_id"
+    t.text "payload", null: false
+    t.jsonb "summary", default: {}, null: false
+    t.string "status", default: "pending", null: false
+    t.integer "attempts", default: 0, null: false
+    t.text "last_error"
+    t.datetime "received_at", null: false
+    t.datetime "last_enqueued_at"
+    t.datetime "processed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel_id"], name: "index_webhook_events_on_channel_id"
+    t.index ["event_key"], name: "index_webhook_events_on_event_key", unique: true
+    t.index ["status", "received_at"], name: "index_webhook_events_on_status_and_received_at"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'processed'::character varying, 'failed'::character varying, 'ignored'::character varying]::text[])", name: "webhook_events_status_valid"
+  end
+
+  add_foreign_key "activities", "inbox_items"
   add_foreign_key "activities", "users", column: "owner_id"
   add_foreign_key "agent_runs", "agents"
   add_foreign_key "agent_runs", "users", column: "triggered_by_id"
   add_foreign_key "ai_analyses", "users", column: "reviewed_by_id"
+  add_foreign_key "assignments", "inbox_items"
+  add_foreign_key "assignments", "users"
+  add_foreign_key "assignments", "users", column: "actor_id"
   add_foreign_key "audit_logs", "api_clients"
   add_foreign_key "audit_logs", "users", column: "actor_id"
+  add_foreign_key "channels", "users", column: "default_owner_id"
   add_foreign_key "commercial_thresholds", "users", column: "approved_by_id"
   add_foreign_key "companies", "countries"
   add_foreign_key "companies", "users", column: "owner_id"
   add_foreign_key "company_services", "companies", on_delete: :cascade
   add_foreign_key "company_services", "services"
+  add_foreign_key "contact_matches", "contacts"
+  add_foreign_key "contact_matches", "contacts", column: "candidate_contact_id"
+  add_foreign_key "contact_matches", "users", column: "decided_by_id"
+  add_foreign_key "contacts", "companies"
+  add_foreign_key "contacts", "contacts", column: "primary_contact_id"
+  add_foreign_key "conversations", "channels"
+  add_foreign_key "conversations", "contacts"
+  add_foreign_key "conversations", "external_identities"
+  add_foreign_key "external_identities", "channels"
+  add_foreign_key "external_identities", "contacts"
+  add_foreign_key "inbox_items", "channels"
+  add_foreign_key "inbox_items", "contacts"
+  add_foreign_key "inbox_items", "leads"
+  add_foreign_key "inbox_items", "users", column: "confirmed_by_id"
+  add_foreign_key "inbox_items", "users", column: "confirmed_owner_id"
+  add_foreign_key "inbox_items", "users", column: "proposed_by_id"
+  add_foreign_key "inbox_items", "users", column: "proposed_owner_id"
+  add_foreign_key "inbox_notes", "inbox_items"
+  add_foreign_key "inbox_notes", "users", column: "author_id"
+  add_foreign_key "inbox_operations", "users", column: "actor_id"
   add_foreign_key "ingestion_requests", "api_clients"
   add_foreign_key "ingestion_requests", "leads", on_delete: :nullify
   add_foreign_key "lead_evidences", "leads", on_delete: :cascade
   add_foreign_key "lead_evidences", "users", column: "captured_by_id"
+  add_foreign_key "lead_form_submissions", "channels"
+  add_foreign_key "lead_form_submissions", "contacts"
+  add_foreign_key "lead_form_submissions", "leads"
+  add_foreign_key "lead_form_submissions", "webhook_events"
   add_foreign_key "lead_scores", "leads", on_delete: :cascade
   add_foreign_key "lead_scores", "scoring_criteria"
   add_foreign_key "lead_services", "leads", on_delete: :cascade
   add_foreign_key "lead_services", "services"
   add_foreign_key "leads", "companies"
+  add_foreign_key "leads", "contacts"
   add_foreign_key "leads", "countries"
   add_foreign_key "leads", "sources"
   add_foreign_key "leads", "users", column: "owner_id"
+  add_foreign_key "messages", "conversations"
+  add_foreign_key "messages", "webhook_events"
   add_foreign_key "opportunities", "companies"
+  add_foreign_key "opportunities", "contacts"
   add_foreign_key "opportunities", "countries"
   add_foreign_key "opportunities", "leads"
   add_foreign_key "opportunities", "pipeline_stages"
@@ -508,4 +797,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_190000) do
   add_foreign_key "service_rates", "users", column: "created_by_id"
   add_foreign_key "sessions", "users"
   add_foreign_key "users", "roles"
+  add_foreign_key "webhook_events", "channels"
 end

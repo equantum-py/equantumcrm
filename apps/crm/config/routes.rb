@@ -45,5 +45,9 @@ Rails.application.routes.draw do
     end
   end
 
+  # Meta webhooks (plan r2, 7.1). Off unless META_WEBHOOKS_ENABLED=true.
+  get "webhooks/meta" => "webhooks/meta#verify", as: :meta_webhook
+  post "webhooks/meta" => "webhooks/meta#receive"
+
   get "up" => "rails/health#show", as: :rails_health_check
 end

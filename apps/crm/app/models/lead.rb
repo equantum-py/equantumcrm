@@ -14,6 +14,7 @@ class Lead < ApplicationRecord
   belongs_to :country, optional: true
   belongs_to :company, optional: true
   belongs_to :owner, class_name: "User", optional: true
+  belongs_to :contact, optional: true
   has_many :lead_services, dependent: :destroy
   has_many :services, through: :lead_services
   has_many :lead_evidences, dependent: :destroy
