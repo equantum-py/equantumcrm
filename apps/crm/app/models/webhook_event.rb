@@ -5,7 +5,6 @@
 class WebhookEvent < ApplicationRecord
   STATUSES = %w[pending processed failed ignored].freeze
   MAX_ATTEMPTS = 5
-  ERROR_LENGTH = 500
 
   encrypts :payload
 
@@ -32,16 +31,14 @@ class WebhookEvent < ApplicationRecord
     update!(status: "processed", processed_at: Time.current, last_error: nil)
   end
 
+  # last_error only ever holds a system-defined code (Channels::ProcessingError),
+  # never an exception message: messages can echo phone numbers, emails or
+  # message text from the payload.
   def record_attempt!(error)
-    update!(attempts: attempts + 1, last_error: self.class.sanitize_error(error))
+    update!(attempts: attempts + 1, last_error: Channels::ProcessingError.code_for(error))
   end
 
   def mark_failed!(error)
-    update!(status: "failed", last_error: self.class.sanitize_error(error))
-  end
-
-  # Class and message only, truncated: never the payload.
-  def self.sanitize_error(error)
-    "#{error.class}: #{error.message}".truncate(ERROR_LENGTH)
+    update!(status: "failed", last_error: Channels::ProcessingError.code_for(error))
   end
 end

@@ -2,6 +2,11 @@
 # run one at a time; failures retry with growing waits and, after the last
 # attempt, the event is left as "failed" for manual reprocessing. Effects are
 # keyed by unique ids, so a retry never duplicates them.
+#
+# Privacy: the original exception never leaves #perform. It is replaced by a
+# Channels::ProcessingError::Sanitized that carries only a system code and no
+# cause, so retry logs, failure logs, the queue's failed executions and
+# last_error never contain text from the payload.
 module Channels
   class ProcessWebhookEventJob < ApplicationJob
     queue_as :inbound
@@ -22,8 +27,9 @@ module Channels
       begin
         processor.call(event)
       rescue StandardError => error
+        code = ProcessingError.code_for(error)
         event.record_attempt!(error)
-        raise
+        raise ProcessingError::Sanitized.new(code), cause: nil
       end
       event.mark_processed!
     end
